@@ -1,14 +1,3 @@
-//! The measurement fixture: one place that says what a vantage is, what a crop is, what a
-//! metric means, and how a reference is built.
-//!
-//! Batch 22's whole content. It renders nothing itself -- it drives `voxelcraft.exe` by path,
-//! which is deliberate and not a convenience: the bit-exactness sweep every batch since 8 has
-//! hand-rolled compares **two executables**, and batch 14 is the standing proof that a flag
-//! which switches a feature off is not a build without the feature in it. A fixture that could
-//! only measure itself could not do the one job the ledger most depends on.
-//!
-//! The driver is [`crate::bin::harness`] -- `cargo run --release --bin harness`.
-
 pub mod bench;
 pub mod metric;
 pub mod vantage;
@@ -19,13 +8,11 @@ pub use vantage::{Content, Crop, Vantage, VANTAGES};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// How a capture is taken, as opposed to where it is taken from.
 #[derive(Clone, Copy, Debug)]
 pub struct Recipe {
     pub width: u32,
     pub height: u32,
-    /// Off by default. The temporal pass hides high-frequency residual, which is the thing
-    /// the look-metrics exist to measure.
+
     pub taa: bool,
 }
 
@@ -57,14 +44,10 @@ impl Recipe {
 pub struct Capture {
     pub path: PathBuf,
     pub stdout: String,
-    /// True when the child printed the `MAX_PAIRS` truncation warning. A capture that
-    /// truncated is missing geometry and must not be scored -- batch 19 scored three of them
-    /// before anyone noticed, because the flat blue that came back read perfectly plausibly as
-    /// "very smooth water".
+
     pub truncated: bool,
 }
 
-/// Render one vantage to `out`, returning what the child said about it.
 pub fn render(
     exe: &Path,
     out: &Path,
@@ -93,10 +76,7 @@ pub fn render(
     if !out.exists() {
         return Err(format!("{} wrote no file", exe.display()));
     }
-    // An ignored argument is an error here and not a warning. The parser drops what it
-    // cannot read and exits 0, so this capture was taken with fewer flags than the
-    // caller asked for -- which in a sweep whose pass condition is `0 pixels differing`
-    // is indistinguishable from the claim being true. Fail loudly instead.
+
     if stderr.contains(UNKNOWN_ARG_MARK) {
         let ignored: Vec<&str> = stderr
             .lines()
@@ -117,61 +97,31 @@ pub fn render(
     })
 }
 
-/// The phrase the renderer prints when `tile_select` asked for more (tile, chunk) pairs than
-/// the buffer holds. One definition, shared with the code that prints it, so the fixture
-/// cannot go deaf by having the message reworded underneath it.
 pub use crate::render::TRUNCATION_MARK;
 
-/// The phrase the argument parser prints for a flag it does not recognise. Same
-/// arrangement and same purpose as [`TRUNCATION_MARK`]; see its definition for why an
-/// ignored argument is the most dangerous thing that can happen to a bit-exactness
-/// claim.
 pub use crate::config::UNKNOWN_ARG_MARK;
 
-// ------------------------------------------------------------ composition of the controls
-
-/// What adding `also` to `base` is supposed to do to the frame.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Composes {
-    /// Nothing at all. `base` already implies `also`, so naming it a second time is a no-op
-    /// and the two captures must be byte-identical.
+
     Nothing,
-    /// Something. The two flags are independent, and this is the direction of the claim that
-    /// keeps the other direction honest -- without it a check that had gone blind, or a flag
-    /// the parser silently dropped, would read as a table of clean passes.
+
     Something,
 }
 
-/// One claim of the form "this control already clears that one", taken off CLAUDE.md's
-/// control table.
-///
-/// **These are same-binary A/Bs, and that is why they are worth having.** Most of the control
-/// table's bit-exactness claims are against a *revert build* -- "reproduces the pre-batch-9
-/// rule set exactly" -- and the reverts for batches 1 through 20 do not exist in this tree and
-/// cannot be rebuilt, there being no `.git` here. What survives is the half of each claim that
-/// this build can check on its own: the composition. `--no-biomes` says it clears the tint,
-/// the foliage and the meadow, and whether it does is a fact about *this* executable.
-///
-/// The rules being checked live in `flags_from` and in `worldgen::has_foliage` /
-/// `has_meadow`, so reading the source answers the flag half. It does not answer the frame
-/// half: `--no-water` and `--no-biomes` change what the *generator* emits as well as what the
-/// shader is compiled with, and a composition can hold in the flag word while the two worlds
-/// differ. Only a render settles it.
 pub struct Implication {
-    /// Side A's arguments.
+
     pub base: &'static [&'static str],
-    /// What side B adds to them.
+
     pub also: &'static [&'static str],
-    /// Which vantages can see this claim, comma-separated. Not "all of them": a claim about
-    /// the wave field is unobservable on a dry vantage, and a table of zeros taken where the
-    /// feature cannot appear is the vacuous pass this whole file exists to refuse.
+
     pub only: &'static str,
     pub expect: Composes,
     pub about: &'static str,
 }
 
 pub const IMPLIES: &[Implication] = &[
-    // -------------------------------------------------------------- `--no-biomes` clears three
+
     Implication {
         base: &["--no-biomes"],
         also: &["--no-tint"],
@@ -209,7 +159,7 @@ pub const IMPLIES: &[Implication] = &[
                 `--no-biomes` is the pre-batch-9 rule set and not merely the pre-batch-9 \
                 terrain",
     },
-    // -------------------------------------------------------------- `--no-foliage` clears the meadow
+
     Implication {
         base: &["--no-foliage"],
         also: &["--no-meadow"],
@@ -218,7 +168,7 @@ pub const IMPLIES: &[Implication] = &[
         about: "the inner link of the same chain, and the one that does not depend on biomes \
                 being off",
     },
-    // -------------------------------------------------------------- batch 60's gain cannot leak
+
     Implication {
         base: &["--no-probe-sun"],
         also: &["--probe-sun-high"],
@@ -226,7 +176,7 @@ pub const IMPLIES: &[Implication] = &[
         expect: Composes::Nothing,
         about: "the louder gain is reachable only through the term it scales, so with that term                 off it must change nothing. **Worth a claim because the two sides compile                 different pipelines** -- `FLAG_PROBE_SUN_HIGH` is in `SPEC_MASK`, so side B                 keys a second `resolve` in which the override is set and the block it feeds is                 dead-stripped anyway. That is exactly the shape batch 58 found an ULP of                 reassociation in, and the claim is here to say whether this one has the same                 problem or is genuinely exact",
     },
-    // -------------------------------------------------------------- `--no-water` clears the field
+
     Implication {
         base: &["--no-water"],
         also: &["--no-waves"],
@@ -244,7 +194,7 @@ pub const IMPLIES: &[Implication] = &[
         about: "the whole wave subtree at once, since all three of batches 19, 20 and 25 nest \
                 inside `FLAG_WAVES` rather than sitting beside it",
     },
-    // -------------------------------------------------------------- `--no-waves` clears its two children
+
     Implication {
         base: &["--no-waves"],
         also: &["--no-wave-aniso"],
@@ -278,7 +228,7 @@ pub const IMPLIES: &[Implication] = &[
         expect: Composes::Nothing,
         about: "all three children together",
     },
-    // -------------------------------------------------------------- and they are siblings
+
     Implication {
         base: &["--no-wave-aniso"],
         also: &["--no-wave-fill"],
@@ -290,7 +240,7 @@ pub const IMPLIES: &[Implication] = &[
                 table of `Nothing`s with no `Something` in it is what a parser silently \
                 dropping an argument looks like",
     },
-    // -------------------------------------------------------------- the shoreline half (batch 75)
+
     Implication {
         base: &["--no-water"],
         also: &["--no-shore-wet", "--no-shore-foam"],
@@ -309,7 +259,7 @@ pub const IMPLIES: &[Implication] = &[
                 the foam a term on the refracted column -- two terms, two materials, no \
                 shared frame by construction -- so switching one off must not absorb the other",
     },
-    // -------------------------------------------------------------- the god-ray asymmetry
+
     Implication {
         base: &["--cloud-shadow", "0", "--no-terrain-shafts"],
         also: &["--godray-strength", "0"],
@@ -322,7 +272,7 @@ pub const IMPLIES: &[Implication] = &[
                 that build now, and with both of them `--godray-strength 0` can still change \
                 nothing. The row below is the half that stops this being vacuous",
     },
-    // ------------------------------------------------------- batch 36's per-block permutation
+
     Implication {
         base: &[],
         also: &["--no-tex-variation"],
@@ -330,7 +280,7 @@ pub const IMPLIES: &[Implication] = &[
         expect: Composes::Something,
         about: "**a `Something` with no `Nothing` beside it, which is the opposite shape to                 every pair above and deliberate.** `--no-tex-variation` clears no other                 control and is cleared by none, so it makes no composition claim for a                 `Nothing` to check. What it does claim is that it is *wired up at all*, and                 that is exactly what six batches of `--water-mottle 0.2 -> Nothing` failed to                 say. The permutation reaches any vantage with ground in it, so a run here                 that moved nothing would mean the flag, the pipeline key or the class table                 had quietly stopped reaching `shade_hit`",
     },
-    // ------------------------------------------------- batch 37's second reader of the envelope
+
     Implication {
         base: &[],
         also: &["--no-distant-shadows"],
@@ -376,7 +326,7 @@ pub const IMPLIES: &[Implication] = &[
                 easiest kind to have backwards, and the pair is what makes either half \
                 falsifiable",
     },
-    // -------------------------------------------------------------- batches 19 and 20 compose
+
     Implication {
         base: &["--no-wave-shoal"],
         also: &["--no-wave-aniso"],
@@ -393,7 +343,7 @@ pub const IMPLIES: &[Implication] = &[
         expect: Composes::Something,
         about: "and the same in the other order",
     },
-    // -------------------------------------------------------------- flags that ship at their default
+
     Implication {
         base: &[],
         also: &["--water-mottle", "0.2"],
@@ -436,7 +386,7 @@ pub const IMPLIES: &[Implication] = &[
                 ignoring it. A ratio of 1 has to stay the identity after that -- the one \
                 value of the flag whose result is knowable without a reference",
     },
-    // ------------------------------------------- batch 41's shadow cut, and its two readers
+
     Implication {
         base: &[],
         also: &["--no-water-shadow-cut"],
@@ -459,7 +409,7 @@ pub const IMPLIES: &[Implication] = &[
                 a build that traces no refraction cannot see this control, and a reading of \
                 `Something` here would mean the budget had leaked into a second call site",
     },
-    // -------------------------------------------------------------- the guard on the guard
+
     Implication {
         base: &[],
         also: &["--no-water"],
@@ -468,7 +418,7 @@ pub const IMPLIES: &[Implication] = &[
         about: "the floor of the whole table. If this reads `Nothing`, the fixture is not \
                 rendering what it thinks it is rendering and every zero above is worthless",
     },
-    // ------------------------------------------ batch 53's dark rung, nested inside batch 48's
+
     Implication {
         base: &["--no-water-far"],
         also: &["--no-water-dark"],
@@ -496,7 +446,7 @@ pub const IMPLIES: &[Implication] = &[
                 that says the flag changes something, at the one camera that can trigger it, \
                 separates the two",
     },
-    // ------------------------------------ batch 54: the surface from below, and what it is not
+
     Implication {
         base: &[],
         also: &["--no-snell"],
@@ -525,7 +475,7 @@ pub const IMPLIES: &[Implication] = &[
                 against `FLAG_DISTANT_SHADOWS` hazard, two readers of one field with one control \
                 between them",
     },
-    // ----------------------------------------- batch 59: the control is exact, not absent
+
     Implication {
         base: &[],
         also: &["--no-light-rgb"],
@@ -557,7 +507,7 @@ pub const IMPLIES: &[Implication] = &[
                 retired `BLOCK_TINT` -- 4 bits cannot reach it exactly, so the shipping frame \
                 departs from the parent there and the control brings it back",
     },
-    // ------------------------------------------- batch 57: the cube is the field, not the code
+
     Implication {
         base: &["--probe-fill", "1.0"],
         also: &["--no-probe-cube"],
@@ -592,70 +542,23 @@ pub const IMPLIES: &[Implication] = &[
     },
 ];
 
-// ------------------------------------------------------------------ metric validation
-
-/// How much a metric has to move on its known-positive control before it is allowed to rule
-/// anything out.
 #[derive(Clone, Copy, Debug)]
 pub enum Response {
-    /// The metric must differ between the two builds by at least this much.
+
     DeltaAtLeast(f64),
-    /// The control's value must be at most this fraction of the baseline's -- for metrics
-    /// where the control *removes* signal rather than changing it.
+
     RatioAtMost(f64),
-    /// The control's value must be at least this fraction of the baseline's.
-    ///
-    /// **The direction matters and is not decoration.** `coherence`'s control puts the texture
-    /// phase *back*, so it must raise the number; and the per-tile readings behind that mean
-    /// go both ways, several of them by more than the mean itself. A `DeltaAtLeast` would take
-    /// the absolute difference and pass just as happily on a batch that had inverted the
-    /// metric's sense.
+
     RatioAtLeast(f64),
 }
 
-/// One metric, one control that is known to move it, and the size of the response.
-///
-/// The rule this encodes is batch 22's reason for existing, stated as code: **a measure that
-/// cannot see a known-positive is not fit to rule anything out.** Batch 21 built three
-/// look-metrics and shipped conclusions from two of them before noticing that one could not
-/// distinguish frames differing by MAE 18.8.
-///
-/// The thresholds are floors at roughly half the measured response, not the measured values.
-/// A floor catches a metric that has gone blind; an equality would just be a second copy of
-/// the number, and would fail on a driver update for no useful reason.
 pub struct MetricCheck {
     pub metric: &'static str,
     pub vantage: &'static str,
-    /// Empty means the whole frame.
+
     pub crop: &'static str,
     pub control: &'static [&'static str],
-    /// Arguments handed to **both** arms, to take a confound out of a comparison that is
-    /// still about `control`.
-    ///
-    /// **Almost always empty, and batch 39 is why.** That batch was offered exactly this for
-    /// `--no-tex-variation` -- `--no-leaf-cutout` on both sides restores its response from
-    /// 1.0755x to 1.2053x -- and refused, "because the row would then speak for a build nobody
-    /// ships". That refusal stands and this field does not repeal it.
-    ///
-    /// **What it is for is the case batch 39 did not have: a metric whose *premise* has been
-    /// violated, as against one whose *response* has shrunk.** Batch 39's row had honestly got
-    /// weaker, because the frame really did hold less in-phase lattice; propping it up would
-    /// have certified the instrument against a frame that no longer existed. A confound is the
-    /// other thing. `rg_speckle`'s row asserts that absorption is what carries a
-    /// high-frequency R-G signal in water; batch 63 gave every face in the world an R-G signal
-    /// out of the sky's hue, which is not absorption and was never what the row was pointed
-    /// at. Cancelling that on both arms does not change what the row certifies about
-    /// absorption -- it is the only way to go on certifying it at all.
-    ///
-    /// **Two conditions before reaching for this, both of which that row meets and neither of
-    /// which is automatic.** The confound has to be *measured* rather than assumed: batch 65
-    /// put a Fresnel reflection of the sky on every opaque surface in the world and moved that
-    /// row by **0.008**, so the list is one flag and not one per appearance batch, which is
-    /// what a prop that had to grow would look like. And **its companion row must stay
-    /// unpropped**, so that the pair still has one member speaking for the build that ships --
-    /// `rg_std` measures the same control on the same crop with this empty and passes on the
-    /// shipping frame at 0.3427x. A pair with both halves isolated would be batch 39's
-    /// objection with extra steps.
+
     pub both: &'static [&'static str],
     pub expect: Response,
     pub about: &'static str,
@@ -786,10 +689,7 @@ pub const CHECKS: &[MetricCheck] = &[
         vantage: "terraces",
         crop: "water",
         control: &["--water-absorb", "0"],
-        // **The one row in this table with a both-sides argument, added by roadmap D4.** See
-        // `MetricCheck::both` for the rule, and for why batch 39's refusal to prop a row is
-        // not repealed by it. The short version is that this row's *premise* was violated
-        // where batch 39's *response* had merely shrunk.
+
         both: &["--no-sky-tint"],
         expect: Response::RatioAtMost(0.8),
         about: "the *high-frequency* half of the same signal, and the metric batch 21b had to \
@@ -901,6 +801,3 @@ pub const CHECKS: &[MetricCheck] = &[
                 pixels; the floor is half",
     },
 ];
-
-
-

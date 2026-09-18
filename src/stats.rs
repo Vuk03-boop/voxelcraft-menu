@@ -1,5 +1,3 @@
-//! Frame timing and memory accounting for the overlay and PERF.md.
-
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -8,7 +6,7 @@ pub struct Stats {
     cpu_frames: VecDeque<f32>,
     last: Instant,
     pub frame_index: u64,
-    /// Filled in by the renderer each frame.
+
     pub chunks_drawn: usize,
     pub chunks_loaded: usize,
     pub chunks_in_flight: usize,
@@ -49,10 +47,8 @@ impl Stats {
         }
     }
 
-    /// Resume from a paused/minimized window without integrating the idle interval.
     pub fn reset_clock(&mut self) { self.last = Instant::now(); }
 
-    /// Returns the delta time in seconds.
     pub fn tick(&mut self) -> f32 {
         let now = Instant::now();
         let dt = (now - self.last).as_secs_f32();
@@ -96,7 +92,6 @@ impl Stats {
         self.cpu_frames.iter().copied().fold(0.0, f32::max)
     }
 
-    /// Geometry bytes per solid voxel, the figure the reference document quotes.
     pub fn bytes_per_voxel(&self) -> f64 {
         if self.solid_voxels == 0 {
             0.0
@@ -143,6 +138,3 @@ pub fn fmt_bytes(b: u64) -> String {
         format!("{v:.1}{}", U[i])
     }
 }
-
-
-

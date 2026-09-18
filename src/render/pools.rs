@@ -1,12 +1,9 @@
-//! GPU buffers that mirror CPU-side pools, with dirty-range uploads and growth.
-
-/// A storage buffer that grows and can be updated by dirty element ranges.
 pub struct GpuMirror {
     pub buf: wgpu::Buffer,
     cap: u64,
     usage: wgpu::BufferUsages,
     label: &'static str,
-    /// Bumped whenever the buffer is recreated, so bind groups can be rebuilt.
+
     pub generation: u32,
     pub uploaded_bytes: u64,
 }
@@ -44,8 +41,6 @@ impl GpuMirror {
         self.cap
     }
 
-    /// Bring the GPU copy up to date. `dirty` holds (offset, len) in elements of
-    /// `elem` bytes. Returns true if the buffer was recreated.
     pub fn sync(
         &mut self,
         device: &wgpu::Device,
@@ -77,7 +72,7 @@ impl GpuMirror {
             let s = off as u64 * elem as u64;
             let e = s + len as u64 * elem as u64;
             match merged.last_mut() {
-                // Merge ranges that are adjacent or nearly so; one bigger write beats two.
+
                 Some(last) if s <= last.1 + 4096 => last.1 = last.1.max(e),
                 _ => merged.push((s, e)),
             }
@@ -91,7 +86,7 @@ impl GpuMirror {
         for (s, e) in merged {
             let e = e.min(needed);
             if e > s {
-                // write_buffer requires a 4-byte aligned offset and size.
+
                 let s = s & !3;
                 let e = (e + 3) & !3;
                 let e = e.min(needed);
@@ -103,7 +98,6 @@ impl GpuMirror {
     }
 }
 
-/// A storage buffer rewritten wholesale each frame (the per-frame chunk list).
 pub struct DynBuffer {
     pub buf: wgpu::Buffer,
     cap: u64,
@@ -149,7 +143,6 @@ impl DynBuffer {
         grew
     }
 
-    /// Resize without preserving contents. Returns true if recreated.
     pub fn resize(&mut self, device: &wgpu::Device, size: u64) -> bool {
         let size = size.max(256);
         if size == self.cap {
@@ -165,6 +158,3 @@ impl DynBuffer {
         self.cap
     }
 }
-
-
-

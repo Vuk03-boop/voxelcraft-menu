@@ -1,5 +1,3 @@
-//! Immediate-mode 2D overlay: colored rects and bitmap text, one draw per frame.
-
 use super::font;
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
@@ -250,6 +248,3 @@ impl UiRenderer {
         self.verts.clear();
     }
 }
-
-
-

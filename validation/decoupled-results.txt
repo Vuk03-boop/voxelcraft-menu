@@ -1,6 +1,0 @@
-Adapter: {'vendor': 'llvmpipe', 'architecture': '', 'device': 'llvmpipe (LLVM 19.1.7, 256 bits)', 'description': 'Mesa 25.0.7-2+deb13u1 (LLVM 19.1.7)', 'stackgroup_min_size': 4, 'stackgroup_max_size': 128, 'vendor_id': 65541, 'device_id': 0, 'adapter_type': 'CPU', 'backend_type': 'Vulkan'}
-PASS one blocker ray per eligible pixel, none for sky/backface/night/disabled/heatmap; complete R16F/R8 writes; opaque resolve zero rays 8 8
-PASS penumbra grows onto lit receivers; full umbra/contact preserved; sky, depth and 90-degree normal edge stops 8 8
-PASS one blocker ray per eligible pixel, none for sky/backface/night/disabled/heatmap; complete R16F/R8 writes; opaque resolve zero rays 17 9
-PASS penumbra grows onto lit receivers; full umbra/contact preserved; sky, depth and 90-degree normal edge stops 17 9
-PASS actual raw/horizontal/vertical/opaque resource-role transitions at two sizes; no performance or native-build claim.

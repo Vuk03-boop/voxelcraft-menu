@@ -1,4 +1,3 @@
-//! GPU-free contracts for the first menu. Full native-window acceptance is in MENU-NOTES.md.
 use voxelcraft::config::{Config, parse_from};
 use voxelcraft::menu::{Menu, Screen, Page, Setting, Action};
 use voxelcraft::settings::{self, Preferences, Grade};

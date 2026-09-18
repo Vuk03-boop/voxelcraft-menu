@@ -1,5 +1,3 @@
-//! Global world: shared pools, chunk records, block queries and edits.
-
 use super::attributes::{decode_leaf, encode_leaf, WordPool, UNIFORM_BIT};
 use super::chunk::{AttrRef, ChunkKey, ChunkRecord, LightRef};
 use super::geometry::{below, has, Inner, RunPool};
@@ -20,27 +18,13 @@ pub struct World {
     pub inners: RunPool<Inner>,
     pub bricks: WordPool,
     pub chunks: FxHashMap<ChunkKey, ChunkRecord>,
-    /// Incremented on any change that affects the render list.
+
     pub version: u64,
-    /// Batch 57's ambient cubes, baked and not yet written into the renderer's lattice.
-    ///
-    /// **A map rather than a queue, keyed on the chunk**, because a chunk can be rebuilt
-    /// before the renderer has drained the previous bake and two entries for one chunk would
-    /// write the same texels twice. It is drained whole by `Renderer::sync_world`; a `World`
-    /// nobody renders -- `--bench-terrain`, the tests -- simply accumulates it and drops it,
-    /// which is bounded by the chunk count and is why there is no cap here.
+
     pub probe_dirty: FxHashMap<ChunkKey, ProbeData>,
-    /// Resident chunks whose `has_emitter` is set (roadmap P11). A count rather than a
-    /// scan, because the question is asked once per frame: whether the world holds any
-    /// emitter at all is what keys `SPEC_EMITTER_GATHER`. **Exact on the edit path** (D5):
-    /// placing the first lamp of a chunk bumps it, breaking that chunk's last lamp bumps
-    /// it back, so the gate disarms on the frame the last lamp out is removed rather than
-    /// when its chunk someday streams out.
+
     pub emitter_chunks: u32,
-    /// Where accepted edits are recorded, so a chunk that unloads and regenerates comes back
-    /// the way it was left. Empty until `attach_journal` shares the streamer's own, and a
-    /// world that never attaches one still records -- into a map nothing reads, which is what
-    /// keeps `set_block` to a single path rather than an `Option` it could forget to check.
+
     pub journal: Arc<EditJournal>,
 }
 
@@ -64,7 +48,6 @@ impl World {
         }
     }
 
-    /// Share the streamer's journal, so what `set_block` records is what replay reads back.
     pub fn attach_journal(&mut self, journal: Arc<EditJournal>) {
         self.journal = journal;
     }
@@ -73,15 +56,10 @@ impl World {
         self.chunks.contains_key(key)
     }
 
-    /// Whether any resident chunk holds an emitter (roadmap P11): the uniform answer
-    /// the block-light gather's gate was *meant* to ask. True whenever one is, so the
-    /// only cost of a stale bit is the gated arm staying on a world whose lamp was
-    /// removed somewhere behind the camera.
     pub fn any_emitter_resident(&self) -> bool {
         self.emitter_chunks != 0
     }
 
-    /// Intern a worker-built tree into the global pools.
     pub fn insert_local(&mut self, key: ChunkKey, t: LocalTree) {
         if self.chunks.contains_key(&key) {
             self.remove_chunk(key);
@@ -99,7 +77,7 @@ impl World {
                 run.push(Inner {
                     mask: n.mask,
                     run_ptr: off,
-                    // P9: the waterline rides the free top nibble; the count fits in 12.
+
                     leaf_prefix: n.leaf_prefix | ((n.water_line as u32) << 28),
                 });
             }
@@ -174,7 +152,6 @@ impl World {
         self.version += 1;
     }
 
-    /// Intern an L1 run (taking references on its leaf runs) and produce the root node.
     fn make_root(&mut self, root_mask: u64, run: &[Inner]) -> Inner {
         if run.is_empty() {
             return Inner::EMPTY;
@@ -231,30 +208,20 @@ impl World {
         if let Some((off, len)) = rec.light_region {
             self.bricks.free(off, len);
         }
-        // A bake nobody has uploaded yet is for a chunk that is gone. The lattice keeps
-        // whatever it already held there, which is either an older bake of the same world
-        // position -- the bake is a pure function of one, so it is the *same* answer -- or
-        // the `face_shade` fill the field is created with. Neither can be read by a surface,
-        // because there is no longer a chunk here to shade.
+
         self.probe_dirty.remove(&key);
         self.version += 1;
         true
     }
 
-    /// Hand a freshly baked ambient cube to the renderer's lattice.
-    ///
-    /// Unlike [`Self::set_light`] this does not need the chunk to be resident and does not
-    /// touch the brick pool: the field is world-space and per-chunk only in who bakes it.
     pub fn set_probe(&mut self, key: ChunkKey, data: ProbeData) {
         self.probe_dirty.insert(key, data);
     }
 
-    /// Take everything baked since the last call, for upload.
     pub fn take_probe_dirty(&mut self) -> FxHashMap<ChunkKey, ProbeData> {
         std::mem::take(&mut self.probe_dirty)
     }
 
-    /// L1 node for a cell bit of a root (synthesizes nodes of full roots).
     #[inline]
     pub fn l1_node(&self, root: Inner, l1b: u32) -> Option<Inner> {
         if !has(root.mask, l1b) {
@@ -318,8 +285,6 @@ impl World {
         self.chunks.contains_key(&ChunkKey::of_block(p))
     }
 
-    /// Set a block at LOD 0 with a bottom-up path edit. Returns false if the chunk is
-    /// not loaded.
     pub fn set_block(&mut self, p: IVec3, id: BlockId) -> bool {
         if p.y < 0 || p.y >= WORLD_HEIGHT {
             return false;
@@ -335,12 +300,10 @@ impl World {
         let lfb = leaf_bit(x, y, z);
         let vb = voxel_bit(x, y, z);
 
-        // Current L1 run, dense by cell.
         let mut l1_nodes = [Inner::EMPTY; 64];
         if old_root.is_full() {
             for (b, n) in l1_nodes.iter_mut().enumerate() {
-                // P9: a synthetic node has no measured waterline; 0xF disables the
-                // ray-side skip, which is the conservative direction (walk as before).
+
                 *n = Inner::full(((b as u32) * 64) | 0xF000_0000);
             }
         } else if !old_root.is_empty() {
@@ -356,7 +319,6 @@ impl World {
         let old_l1_nodes = l1_nodes;
         let old_l1 = l1_nodes[l1b as usize];
 
-        // Current leaf run of that L1, dense by cell.
         let mut leafs = [0u64; 64];
         if old_l1.is_full() {
             leafs = [u64::MAX; 64];
@@ -376,9 +338,7 @@ impl World {
         if !was_solid && !now_solid {
             return true;
         }
-        // Table position of this leaf; also the insertion point when it did not exist.
-        // Derived from the dense node array rather than `old_l1.leaf_prefix`, because an
-        // absent L1 cell carries a prefix of 0 and would insert at the front of the table.
+
         let mut base_prefix = 0u32;
         for n in l1_nodes.iter().take(l1b as usize) {
             base_prefix += n.count();
@@ -397,10 +357,7 @@ impl World {
         if was_solid && now_solid && ids[vb as usize] == id {
             return true;
         }
-        // The one place an edit is known to be real: past the height bound, past the
-        // residency check, and past both redundant-write returns. Recording here rather than
-        // at the two call sites that edit is what stops a third from being added without one
-        // -- the argument `scene.rs` makes about `flags_from`. See `docs/persistence.md`.
+
         self.journal.record(p, id);
         let new_leaf = if now_solid {
             old_leaf | (1u64 << vb)
@@ -410,7 +367,6 @@ impl World {
         let old_id = ids[vb as usize];
         ids[vb as usize] = id;
 
-        // ---- attribute table
         let mut table: Vec<u32> = match attr {
             AttrRef::Uniform(u) => vec![UNIFORM_BIT | u as u32; leaf_count as usize],
             AttrRef::Table { base, len } => self.bricks.get(base, len as usize).to_vec(),
@@ -435,7 +391,6 @@ impl World {
             table.remove(leaf_pos);
         }
 
-        // ---- new L1 node
         leafs[lfb as usize] = new_leaf;
         let mut new_mask = 0u64;
         for (b, m) in leafs.iter().enumerate() {
@@ -446,7 +401,7 @@ impl World {
         let new_l1 = if new_mask == 0 {
             Inner::EMPTY
         } else if new_mask == u64::MAX && leafs.iter().all(|&m| m == u64::MAX) {
-            // P9: the edit path does not re-scan for a waterline; disable the bound.
+
             Inner::full(0xF000_0000)
         } else {
             let run: Vec<u64> = leafs.iter().copied().filter(|&m| m != 0).collect();
@@ -464,7 +419,6 @@ impl World {
         };
         l1_nodes[l1b as usize] = new_l1;
 
-        // ---- new L1 run with recomputed prefixes
         let mut run: Vec<Inner> = Vec::with_capacity(64);
         let mut prefix = 0u32;
         let mut root_mask = 0u64;
@@ -490,7 +444,6 @@ impl World {
             }
         }
 
-        // ---- write back attributes
         let uniform_all = match table.first() {
             None => true,
             Some(&f) => f & UNIFORM_BIT != 0 && table.iter().all(|&e| e == f),
@@ -543,21 +496,14 @@ impl World {
             rec.solid_count -= 1;
         }
         rec.has_water |= id == crate::block::WATER;
-        // Batch 53, and **set-only for the reason the four flags around it are**: a placed
-        // block that is not water makes its 16^3 cell opaque to a ray that ignores water, and
-        // failing to record that would let the marcher step straight through it. Removing the
-        // last dry block in a cell does not clear the bit, because clearing means a scan of
-        // 4,096 voxels and the only cost of not clearing is the skip this chunk does not get.
+
         if id != crate::block::WATER && id != crate::block::AIR {
             rec.dry_mask |= 1u64 << crate::voxel::tree::l1_bit(x, y, z);
         }
         rec.has_foliage |= crate::block::is_foliage(id);
         rec.has_cutout |= crate::block::is_cutout(id);
         rec.has_glass |= crate::block::is_glass(id);
-        // P11, exact (D5): the edit knows both ids -- `old_id` is the block that was
-        // there -- so the count moves on both transitions, and the gate it feeds arms and
-        // disarms on the frame either happens. No scan, anywhere: the counter below is the
-        // scan of every edit this chunk has ever taken, paid two compares at a time.
+
         let now_e = crate::block::is_emitter(id);
         let was_e = crate::block::is_emitter(old_id);
         match (was_e, now_e) {
@@ -582,7 +528,6 @@ impl World {
         true
     }
 
-    /// Attach computed lighting to a chunk, replacing whatever it had.
     pub fn set_light(&mut self, key: ChunkKey, data: crate::light::LightData) {
         let Some(rec) = self.chunks.get(&key) else {
             return;
@@ -612,7 +557,7 @@ impl World {
                 } else {
                     None
                 };
-                // Cell entries hold absolute pool offsets, so rebase the brick indices.
+
                 let base_off = brick_base.map_or(0, |(o, _)| o);
                 let cells: Vec<u32> = data
                     .cells
@@ -646,8 +591,6 @@ impl World {
         self.version += 1;
     }
 
-    /// Expand a chunk back into a dense block array by walking the tree, which is far
-    /// cheaper than 262144 `get_block` calls. Used to relight after edits.
     pub fn extract_dense(&self, key: ChunkKey, out: &mut [BlockId]) -> bool {
         use super::tree::{bit_xyz, dense_index};
         let Some(rec) = self.chunks.get(&key) else {
@@ -685,7 +628,6 @@ impl World {
         true
     }
 
-    /// Bytes held by the geometry pools.
     pub fn geometry_bytes(&self) -> usize {
         self.leaves.bytes() + self.inners.bytes()
     }
@@ -694,6 +636,3 @@ impl World {
         self.chunks.values().map(|c| c.solid_count as u64).sum()
     }
 }
-
-
-

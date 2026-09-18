@@ -1,5 +1,3 @@
-//! Tiny 3x5 bitmap font, generated into a texture at startup.
-
 pub const GLYPH_W: u32 = 3;
 pub const GLYPH_H: u32 = 5;
 pub const CELL_W: u32 = 4;
@@ -73,7 +71,6 @@ fn glyph(c: u8) -> [&'static str; 5] {
     }
 }
 
-/// R8 texture, one row of glyph cells: width COUNT*CELL_W, height CELL_H.
 pub fn build_font_texture() -> (Vec<u8>, u32, u32) {
     let w = COUNT * CELL_W;
     let h = CELL_H;
@@ -92,6 +89,3 @@ pub fn build_font_texture() -> (Vec<u8>, u32, u32) {
     }
     (v, w, h)
 }
-
-
-

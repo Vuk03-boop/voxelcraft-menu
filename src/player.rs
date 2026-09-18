@@ -1,5 +1,3 @@
-//! First-person player: look, walk/fly, AABB collision, block picking.
-
 use crate::block::{Bar, BlockId, HOTBAR, SLOTS, WATER};
 use crate::journal::PlayerState;
 use crate::math::{block_of, Aabb};
@@ -17,13 +15,7 @@ const FLY_FAST: f32 = 90.0;
 const JUMP_SPEED: f32 = 8.4;
 const GRAVITY: f32 = 28.0;
 const REACH: f32 = 6.0;
-/// Swimming. Vertical velocity relaxes toward a target rather than integrating a buoyant
-/// force: the walking model already sets horizontal velocity outright, and a target plus a
-/// drag rate reads the same as buoyancy-versus-drag once both have settled -- while being
-/// one line instead of a force balance whose only observable is its own terminal velocity.
-/// `WATER_DRAG` is what makes entering the water decelerate a fall over about a fifth of a
-/// second instead of stopping it dead, which is the only part of it the player actually
-/// feels.
+
 const SWIM_SPEED: f32 = 3.2;
 const SWIM_UP: f32 = 3.0;
 const SWIM_DOWN: f32 = 3.0;
@@ -41,8 +33,7 @@ pub struct Input {
     pub rmb: bool,
     pub lmb_down: bool,
     pub rmb_down: bool,
-    /// Middle button, which is pick-block. Batch 34, and it is an edge like the other two:
-    /// the bar changes on the press, not for every frame the button is held.
+
     pub mmb: bool,
     pub mmb_down: bool,
 }
@@ -66,7 +57,7 @@ impl Input {
 }
 
 pub struct Player {
-    /// Feet position.
+
     pub pos: Vec3,
     pub vel: Vec3,
     pub yaw: f32,
@@ -74,9 +65,7 @@ pub struct Player {
     pub fly: bool,
     pub on_ground: bool,
     pub hotbar: usize,
-    /// What is in each slot, which since batch 34 is the player's rather than the build's.
-    /// Starts as `block::HOTBAR`, is filled in by picking a block, and is carried by the
-    /// journal -- so a world comes back with the bar it was left with.
+
     pub bar: Bar,
     pub sensitivity: f32,
     pub place_cooldown: f32,
@@ -85,7 +74,7 @@ pub struct Player {
 #[derive(Clone, Copy, Debug)]
 pub struct Pick {
     pub block: IVec3,
-    /// Block adjacent to the hit face (where a placed block goes).
+
     pub adjacent: IVec3,
     pub normal: IVec3,
     pub distance: f32,
@@ -111,12 +100,6 @@ impl Player {
         self.pos + Vec3::new(0.0, EYE, 0.0)
     }
 
-    /// The part of a player a save file carries: where they stand, where they look, what
-    /// they have in hand. Batch 32.
-    ///
-    /// **Velocity is deliberately not in it.** A save file says where you are, not how fast
-    /// you were falling when you closed the window, and restoring a downward velocity into a
-    /// world whose chunks have not streamed in yet would drop the player through the floor.
     pub fn state(&self) -> PlayerState {
         PlayerState::new(
             self.pos.into(),
@@ -127,16 +110,6 @@ impl Player {
         )
     }
 
-    /// Put a loaded player back where they were.
-    ///
-    /// **`pitch` is not clamped here even though [`Self::update`] clamps it to +/-1.55.** The
-    /// headless capture path writes `--cam-pitch` straight in, so `--cam-pitch -90` is a
-    /// camera this can be asked to reproduce; clamping would make a resumed capture differ
-    /// from the one that wrote the journal, which is exactly the equality batch 32 measures
-    /// itself by. A player who reaches this through the window was clamped on the way in.
-    ///
-    /// The hotbar slot is in range because [`PlayerState::check`] refused the file otherwise
-    /// -- this is the one field that would panic three call sites later.
     pub fn restore(&mut self, s: PlayerState) {
         self.pos = Vec3::from(s.pos);
         self.vel = Vec3::ZERO;
@@ -172,14 +145,6 @@ impl Player {
         self.bar[self.hotbar]
     }
 
-    /// Put `id` in the selected slot -- the picking half of batch 34, and the only way the
-    /// bar changes without a flag.
-    ///
-    /// **The refusal is `block::bar_slot_refusal` and not a test of its own**, which matters
-    /// more here than at the file's edge: the world is full of blocks a bar may not hold, so
-    /// picking is the one route by which a player could aim at a tuft and compile-time
-    /// reasoning about `SPEC_FOLIAGE` would stop being true. Refused silently, because the
-    /// gesture is a mouse click at a block and the feedback is the slot not changing.
     pub fn pick_into_bar(&mut self, id: BlockId) -> bool {
         if crate::block::bar_slot_refusal(id).is_some() {
             return false;
@@ -188,15 +153,10 @@ impl Player {
         true
     }
 
-    /// Body in water, which is what switches the physics to swimming. Sampled at the
-    /// player's middle rather than at the feet, so standing in a one-block puddle wades
-    /// instead of swimming.
     pub fn in_water(&self, world: &World) -> bool {
         world.get_block(block_of(self.pos + Vec3::new(0.0, HEIGHT * 0.5, 0.0))) == WATER
     }
 
-    /// Eye in water. Drives the renderer's underwater medium, and nothing else -- the two
-    /// are separate because a player standing chest-deep swims but sees above the surface.
     pub fn eye_in_water(&self, world: &World) -> bool {
         world.get_block(block_of(self.eye())) == WATER
     }
@@ -266,7 +226,7 @@ impl Player {
                 self.pos += d;
             }
         } else if physics && self.in_water(world) {
-            // Swimming. Space rises, Shift dives, neither sinks slowly.
+
             let target = if input.is_down(KeyCode::Space) {
                 SWIM_UP
             } else if input.is_down(KeyCode::ShiftLeft) {
@@ -298,7 +258,7 @@ impl Player {
     }
 
     fn move_collide(&mut self, world: &World, d: Vec3) {
-        // Sub-step so fast flight never tunnels through walls.
+
         let steps = ((d.abs().max_element() / 0.4).ceil() as i32).clamp(1, 32);
         let sd = d / steps as f32;
         for _ in 0..steps {
@@ -340,7 +300,7 @@ impl Player {
                 _ => WIDTH * 0.5,
             };
             if delta > 0.0 {
-                // Snap the leading face to the nearest block boundary below it.
+
                 let lead = self.pos[axis] + extent;
                 self.pos[axis] = lead.floor() - extent - 1e-4;
             } else {
@@ -371,7 +331,6 @@ impl Player {
         false
     }
 
-    /// Voxel DDA from the eye along the look direction.
     pub fn pick(&self, world: &World) -> Option<Pick> {
         let o = self.eye();
         let d = self.look_dir();
@@ -433,12 +392,8 @@ impl Player {
         None
     }
 
-    /// True if placing a block at `p` would intersect the player.
     pub fn intersects_block(&self, p: IVec3) -> bool {
         let b = Aabb::new(p.as_vec3(), p.as_vec3() + Vec3::ONE);
         self.aabb().intersects(&b)
     }
 }
-
-
-

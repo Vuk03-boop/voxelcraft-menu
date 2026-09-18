@@ -1,4 +1,3 @@
-/// Extract a WGSL function after stripping line comments; braces are then code only.
 pub fn wgsl_function(source: &str, name: &str) -> String {
     let code = source.lines().map(|l| l.split("//").next().unwrap_or("")).collect::<Vec<_>>().join("\n");
     let pattern = format!("fn {name}(");

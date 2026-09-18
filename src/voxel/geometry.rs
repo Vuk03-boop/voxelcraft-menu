@@ -1,10 +1,3 @@
-//! Geometry storage: deduplicated runs of leaf masks and inner nodes (HashDAG mechanics).
-//!
-//! A chunk is a 3-level 4^3 tree. The root and L1 nodes are `Inner`; leaves are bare
-//! 64-bit occupancy masks. Children are stored as contiguous runs of `popcount(mask)`
-//! entries. Runs are the unit of deduplication: identical runs share storage and are
-//! reference counted.
-
 use bytemuck::{Pod, Zeroable};
 use hashbrown::HashTable;
 use rustc_hash::FxHasher;
@@ -12,24 +5,15 @@ use std::hash::Hasher;
 
 pub const FULL_FLAG: u32 = 1 << 31;
 
-/// What of `Inner::leaf_prefix` is the count. Roadmap P9 packs the node's waterline in
-/// the top nibble above it; arithmetic consumers mask with this first. **Placed above
-/// the attribute block and never between** `#[repr(C)]` plus its derive list and the item
-/// they apply to: a doc comment there silently re-targets the attributes -- `Inner` lost
-/// Copy/Hash/Pod/Zeroable in one paste at batch 76 and 19 errors cascaded from it, which
-/// is the kind of bug only a compile can see, so the reason is written where the next
-/// constant will be tempted to go.
 pub const PREFIX_MASK: u32 = 0x0FFF_FFFF;
 
-/// Inner node (root or L1). 16 bytes, mirrored to the GPU as `vec4<u32>`.
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, Pod, Zeroable)]
 pub struct Inner {
     pub mask: u64,
-    /// Offset of the child run in its pool; bit 31 set means the whole subtree is solid
-    /// and no child run is stored.
+
     pub run_ptr: u32,
-    /// Number of leaves in earlier siblings of the same run (root: 0).
+
     pub leaf_prefix: u32,
 }
 
@@ -66,7 +50,6 @@ impl Inner {
     }
 }
 
-/// Number of set bits strictly below `bit` (bit in 0..64).
 #[inline]
 pub fn below(mask: u64, bit: u32) -> u32 {
     (mask & ((1u64 << bit) - 1)).count_ones()
@@ -88,7 +71,6 @@ fn hash_run<T: Pod>(run: &[T]) -> u64 {
     h.finish()
 }
 
-/// Pool of interned, reference-counted runs.
 pub struct RunPool<T: RunElem> {
     data: Vec<T>,
     refs: Vec<u32>,
@@ -96,9 +78,9 @@ pub struct RunPool<T: RunElem> {
     table: HashTable<u32>,
     free: Vec<Vec<u32>>,
     dirty: Vec<(u32, u32)>,
-    /// Elements in live (referenced) runs.
+
     pub live_elems: usize,
-    /// Sum over live runs of refs * len: what an undeduplicated store would hold.
+
     pub referenced_elems: u64,
 }
 
@@ -148,7 +130,6 @@ impl<T: RunElem> RunPool<T> {
         self.table.len()
     }
 
-    /// Intern a run, adding one reference. Returns `(offset, is_new)`.
     pub fn intern(&mut self, run: &[T]) -> (u32, bool) {
         debug_assert!(!run.is_empty() && run.len() <= 64);
         let h = hash_run(run);
@@ -158,9 +139,7 @@ impl<T: RunElem> RunPool<T> {
             .table
             .find(h, |&o| {
                 let o = o as usize;
-                // Candidates only pre-match on the 7-bit hash tag, so this closure sees
-                // runs of unrelated lengths; comparing at the query length would both
-                // read past the end of `data` and match a shorter run by its prefix.
+
                 lens[o] as usize == run.len() && &data[o..o + run.len()] == run
             })
             .copied();
@@ -197,8 +176,6 @@ impl<T: RunElem> RunPool<T> {
         self.refs[off as usize]
     }
 
-    /// Drop one reference. Returns true if the run was freed; the caller must then
-    /// release whatever child runs its elements referenced.
     pub fn release(&mut self, off: u32) -> bool {
         let o = off as usize;
         let len = self.lens[o] as usize;
@@ -235,7 +212,6 @@ impl<T: RunElem> RunPool<T> {
         std::mem::take(&mut self.dirty)
     }
 
-    /// Ratio of what a naive store would hold to what is actually stored.
     pub fn dedup_ratio(&self) -> f64 {
         if self.live_elems == 0 {
             1.0
@@ -244,6 +220,3 @@ impl<T: RunElem> RunPool<T> {
         }
     }
 }
-
-
-

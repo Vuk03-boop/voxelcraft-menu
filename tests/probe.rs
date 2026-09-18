@@ -1,31 +1,3 @@
-//! The probe field: batch 55's diagnostic tap, batch 56's removal, and batch 57's ambient cube.
-//!
-//! The feature is one hardware trilinear tap into the probe field per shaded surface, and under
-//! `--probe-tap` that field holds a constant 1.0 -- so `shade_hit`'s `amb = amb * probe_tap(hit)`
-//! is bit-exact for every finite `amb` and the whole output of the batch is a millisecond. The
-//! constant is no longer the field's default: batch 57 filled it with a real bake, and
-//! `--probe-tap` implies `--probe-fill 1.0` so that this paragraph stays true.
-//!
-//! **That bit-exactness is also the hazard this file exists for.** `lessons.md` records it as
-//! *a no-op claim cannot be told apart from a not-wired-up claim*, and a sweep whose pass
-//! condition is **0 pixels differing** cannot tell a tap that costs nothing from a tap that was
-//! never compiled in. Batch 55's answer is three readings from three different places, and two
-//! of them are here:
-//!
-//! - the picture, from `--probe-fill 0.5`, which **must** move (the fixture's job, not this file's)
-//! - the machine code, from `shaderstats`: `resolve` is **+1280 bytes** with the override at 1
-//!   and **96 registers on both sides**
-//! - the source, which is what the two tests below claim
-//!
-//! These are claims about the shader *source*, the way `tests/secondary.rs` and `tests/cutout.rs`
-//! make them, because there is no Rust function to call and neither defect shows up in any image.
-//!
-//! **Batch 57 turned that field into a real one and added the second half of this file.** The
-//! bake is Rust, so those tests can call it -- and what they check is not that it runs but that
-//! it *reduces* correctly: an unoccluded probe has to reproduce `face_shade`'s own numbers, or
-//! shipping the cube changes how bright the world is rather than how it is shaped, and no
-//! before/after screenshot could separate the two.
-
 mod support;
 use glam::{IVec3, Vec3};
 use voxelcraft::block;
@@ -33,13 +5,6 @@ use voxelcraft::probe;
 use voxelcraft::render;
 use voxelcraft::voxel::{ChunkKey, World};
 
-/// The body of one WGSL function, with its comments stripped.
-///
-/// A transliteration of `tests/secondary.rs`'s helper, deliberately: `pitfalls.md` warns that a
-/// second copy of a thing nothing uses rots, and this one has a caller in each file. Comments go
-/// first for `hit_t_does_not_branch_on_the_cutout_override`'s reason -- the explanation of *why*
-/// a name is absent from the code names it, and a test its own documentation can fail is not
-/// checking the code.
 fn fn_body(name: &str) -> String {
     let src = render::shader_source();
     let pat = format!("fn {name}(");
@@ -57,15 +22,6 @@ fn fn_body(name: &str) -> String {
         .join("\n")
 }
 
-/// The gate is the override alone, which is batch 45's rule applied to the batch that measures it.
-///
-/// **The failure this refuses would be self-inflicted in a way none of the others would be.** The
-/// arm sits in `shade_hit`, which `resolve` inlines four times; written the house way as
-/// `SPEC_PROBE_TAP && (frame.flags & FLAG_PROBE_TAP) != 0u`, `frame.flags` is a run-time value,
-/// the driver cannot prove which arm runs, and the texture sample stays compiled into every copy.
-/// The shipping build would then pay for a tap it never takes -- and the number the batch exists
-/// to report would be the cost of the measurement rather than the cost of the thing. Batch 45
-/// measured that spelling at **+1.000 ms** against **-1.584** for the folded one, same arm taken.
 #[test]
 fn the_probe_tap_is_gated_by_the_override_alone() {
     let src = render::shader_source();
@@ -83,14 +39,6 @@ fn the_probe_tap_is_gated_by_the_override_alone() {
     );
 }
 
-/// The tap is a multiply by the field and nothing else, which is what makes it bit-exact.
-///
-/// **The thing that would quietly break this is a helpful edit, not a wrong one.** Any other
-/// combiner -- an add, a `mix`, a `clamp`, a second term -- is defensible on its face and
-/// destroys the one property the batch rests on: `x * 1.0` is `x` for every finite `x`, where
-/// `x + 1.0` is not, and `bitexact` would then be measuring a look change nobody intended. It is
-/// the same shape as batch 54's control bug, where a gate one level too deep made `--no-snell`
-/// revert the detail of a mirror rather than the mirror.
 #[test]
 fn the_tap_combines_by_multiply_so_a_unit_field_is_invisible() {
     let src = render::shader_source();
@@ -110,7 +58,6 @@ fn the_tap_combines_by_multiply_so_a_unit_field_is_invisible() {
          change. Arm was:\n{arm}"
     );
 
-    // And the field it taps is the 3D texture, not something a later batch pointed elsewhere.
     let body = fn_body("probe_tap");
     assert!(
         body.contains("textureSampleLevel(probe_tex, linear_samp"),
@@ -125,14 +72,6 @@ fn the_tap_combines_by_multiply_so_a_unit_field_is_invisible() {
     );
 }
 
-/// The diagnostic ships **off**, and that is a property of `Config::default` rather than of prose.
-///
-/// **This is the one switch in the tree whose off state is the shipping build**, and the reason
-/// is the argument `CLAUDE.md`'s control table makes about cost: a control that costs something
-/// taxes every measurement taken through it until somebody reaches the roadmap entry.
-/// `--no-foliage` is the precedent at **+1.24 to +2.07 ms**, the largest regression this project
-/// has shipped, and it was in a control. A diagnostic that ships *on* would be that failure with
-/// the excuse removed, since this one's entire purpose is to be measured.
 #[test]
 fn the_probe_tap_ships_off_and_the_field_ships_at_one() {
     let cfg = voxelcraft::config::Config::default();
@@ -147,9 +86,7 @@ fn the_probe_tap_ships_off_and_the_field_ships_at_one() {
          constant and switches the bake's uploads off, and that is a diagnostic rather than \
          the shipping build"
     );
-    // ...and asking for either diagnostic has to bring the constant field back with it, or
-    // batch 55's and batch 56's rows in `CLAUDE.md`'s control table stop being true. The pin
-    // is what keeps `--probe-tap` bit-exact now that the texture holds real shading factors.
+
     let (tap, _, _) = voxelcraft::config::parse_from(&["--probe-tap".to_string()]);
     assert_eq!(
         tap.probe_fill,
@@ -176,13 +113,6 @@ fn the_probe_tap_ships_off_and_the_field_ships_at_one() {
     );
 }
 
-/// `--probe-ambient` implies `--probe-tap`, and the implication lives at the parser.
-///
-/// **The removal without the tap is a shader that reads no light at all**, which would render a
-/// frame and report a millisecond and mean nothing -- the fastest build is always the one that
-/// computes nothing. Putting the implication in `config::parse_from` rather than in `flags_from`
-/// means no consumer can construct the broken pair: `harness`, `headless` and `app` all read the
-/// same `Config`, and a second copy of the rule in `scene.rs` is a second copy that could drift.
 #[test]
 fn probe_ambient_implies_probe_tap() {
     let (cfg, _, _) = voxelcraft::config::parse_from(&["--probe-ambient".to_string()]);
@@ -200,14 +130,6 @@ fn probe_ambient_implies_probe_tap() {
     );
 }
 
-/// The removal folds at pipeline-compile time, which is the only way it removes anything.
-///
-/// Every site gated below sits inside `shade_hit`, which `resolve` inlines four times. A
-/// run-time gate keeps both arms in every copy -- the deleted terms would still be compiled, the
-/// build would measure nothing, and `shaderstats` is what says otherwise: `resolve` is
-/// **582,400 bytes shipping, 583,680 with the tap and 575,360 with the removal**. If a later
-/// edit gives any of these a `frame.flags` companion, that last number goes back up and the
-/// batch's whole reading is void.
 #[test]
 fn the_removal_is_gated_by_the_override_alone() {
     let src = render::shader_source();
@@ -231,22 +153,6 @@ fn the_removal_is_gated_by_the_override_alone() {
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// Batch 57: the ambient cube
-// ---------------------------------------------------------------------------------------------
-
-/// An unoccluded probe returns exactly 1 on every axis.
-///
-/// **This is the exposure claim, and it is the one thing the screenshot pair cannot check.**
-/// The cube's job is to change how the world is *shaped*, not how bright it is, and the field
-/// stores occlusion precisely so that "unchanged" has an exact spelling: `shade_hit` computes
-/// `face_shade(id) * tap`, so 1 is the identity and anything else is a global exposure shift
-/// wearing an occlusion change's name. If an open field came back at 0.987 -- exactly where
-/// sixteen azimuths land without the discrete normalisation -- every side face in the world
-/// would darken 1.3% uniformly, which no before/after could tell from the feature working.
-///
-/// The first build of this batch got it wrong in the other direction and by far more, and
-/// `probe`'s module note has that story.
 #[test]
 fn an_open_probe_reproduces_the_constants_it_replaces() {
     let open = probe::cube_from_tangents(&[0.0; probe::AZIMUTHS]);
@@ -260,19 +166,9 @@ fn an_open_probe_reproduces_the_constants_it_replaces() {
     }
 }
 
-/// A buried probe returns 1, which is what makes `cave` bit-exact rather than nearly so.
-///
-/// **`lessons.md` calls a bit-exact vantage the failure mode indistinguishable from success**,
-/// so this exists to say *why* `cave` does not move rather than to let the sweep imply it. A
-/// probe under the height field sees no sky in any direction and its raw occlusion is 0 on
-/// every axis, which would multiply the whole cave to black. `SKY_BLEND` is the constant that
-/// refuses to, and the second half of this test says it is a *ramp* and not a cliff: a probe
-/// that can still see a tenth of the sky has to come back well above its raw occlusion and
-/// well below 1, because a step in the field is a step the trilinear tap would smear over
-/// eight blocks.
 #[test]
 fn a_buried_probe_falls_back_to_the_table() {
-    // atan(64) is 89.1 degrees: the height field is overhead in every direction.
+
     let buried = probe::cube_from_tangents(&[64.0; probe::AZIMUTHS]);
     for (id, &v) in buried.iter().enumerate() {
         assert!(
@@ -282,7 +178,6 @@ fn a_buried_probe_falls_back_to_the_table() {
         );
     }
 
-    // atan(3) is 71.6 degrees all round: a deep slot, about a tenth of the sky, inside the ramp.
     let slot = probe::cube_from_tangents(&[3.0; probe::AZIMUTHS]);
     assert!(
         slot[3] > 0.2 && slot[3] < 0.95,
@@ -292,17 +187,10 @@ fn a_buried_probe_falls_back_to_the_table() {
     );
 }
 
-/// The cube is directional, which is the entire feature and the one thing a constant cannot do.
-///
-/// A horizon that rises in the +X azimuths and nowhere else has to darken the +X face and
-/// leave the -X face alone. **Without this the batch could ship a field that is merely a
-/// scalar AO term**, which would look like something and would not be what roadmap R1 is
-/// about: the ladder's rung is *direction*, and a six-entry cube answering the same number six
-/// times is the one-coefficient basis the flood already has.
 #[test]
 fn a_one_sided_horizon_darkens_only_the_face_that_looks_at_it() {
     let mut tan = [0.0f32; probe::AZIMUTHS];
-    // Azimuth k runs from +X anticlockwise toward +Z, so k = 0 is +X and k = 8 is -X.
+
     for (k, t) in tan.iter_mut().enumerate() {
         if k <= 2 || k >= probe::AZIMUTHS - 2 {
             *t = 4.0;
@@ -335,12 +223,6 @@ fn a_one_sided_horizon_darkens_only_the_face_that_looks_at_it() {
     );
 }
 
-/// The cube's gate is the override alone, which is batch 45's rule and batch 55's reason.
-///
-/// The arm sits in `shade_hit`, which `resolve` inlines four times. A `frame.flags` companion
-/// would keep the texture sample compiled into every copy, so `--no-probe-cube` would pay for a
-/// tap it never takes -- and a control that costs a millisecond taxes every measurement made
-/// through it, which is the argument `CLAUDE.md`'s cost column exists to make.
 #[test]
 fn the_ambient_cube_is_gated_by_the_override_alone() {
     let src = render::shader_source();
@@ -363,7 +245,6 @@ fn the_ambient_cube_is_gated_by_the_override_alone() {
     }
 }
 
-/// The cube ships **on**, which is the opposite of the two diagnostics above it in this file.
 #[test]
 fn the_ambient_cube_ships_on() {
     let cfg = voxelcraft::config::Config::default();
@@ -382,16 +263,6 @@ fn the_ambient_cube_ships_on() {
     );
 }
 
-/// `probe_field` reads the slab its `normal_id` names, and the Rust bake writes them in that
-/// order.
-///
-/// **It was `probe_cube` until batch 58 gave the same texel a second field**, and this test is
-/// what made the rename declare itself -- it failed on the name before anything else did.
-///
-/// **A wrong slab stride reads a plausible neighbouring axis rather than garbage**, which is
-/// exactly why `block_faces`' stride is an invariant rather than a bug report. The two halves
-/// are `write_probe`'s `axis * PROBE_DIM_Y` in Rust and `f32(slab) * PROBE_DIM` in WGSL, and
-/// the thing that ties them is that `slab` is `normal_id` with no remap.
 #[test]
 fn the_slab_index_is_the_normal_id() {
     let src = render::shader_source();
@@ -422,13 +293,6 @@ fn the_slab_index_is_the_normal_id() {
     );
 }
 
-// ---- batch 58: the ground bounce ----
-
-/// The bounce ships **on**, and its control must not pin the field.
-///
-/// Same shape as `the_ambient_cube_ships_on` above it and for the same reason: the claim
-/// `--no-probe-bounce` makes is that the *shader* multiplies by nothing, and pinning the field
-/// would make the control pass even if the arm were still reading the texel.
 #[test]
 fn the_ground_bounce_ships_on() {
     let cfg = voxelcraft::config::Config::default();
@@ -448,15 +312,6 @@ fn the_ground_bounce_ships_on() {
     );
 }
 
-/// `probe::FLOOR_TINT` is the same three numbers `resolve.wgsl` multiplies `frame.ambient` by.
-///
-/// **The bake divides this back out**, so that what the field stores is a multiplier on the
-/// shader's constant whose identity is 1.0. If the two copies drifted, the identity would stop
-/// being 1.0, every absence of the feature would stop being exact -- an unbaked texel, a coarse
-/// LOD, `--no-probe-bounce` -- and **nothing in any capture would announce it**, because the
-/// error is a uniform tint on a term that is a tenth of the ambient. That is the same argument
-/// `faces_per_block_matches_the_shader` makes, and the reason this is a test rather than a
-/// comment saying "keep these in sync".
 #[test]
 fn floor_tint_matches_the_shader() {
     let src = render::shader_source();
@@ -473,16 +328,6 @@ fn floor_tint_matches_the_shader() {
     );
 }
 
-/// `block::ALBEDO` is the mean linear albedo of each block's +Y face in the atlas it claims to
-/// come from.
-///
-/// **A hand-written table is exactly the thing that drifts**, and it drifts silently: a texture
-/// tweak in `textures.rs` moves the picture in a way a capture shows, and moves the *bounce* in
-/// a way no capture attributes to it. Rebuilding the atlas here costs a millisecond and removes
-/// the whole failure mode.
-///
-/// The tolerance is 1e-3 because the table is written to four places and the mean is taken in
-/// linear over 256 texels, so the only difference should be the decimal rounding.
 #[test]
 fn albedo_matches_the_atlas() {
     let atlas = voxelcraft::textures::build_atlas(0.0, false);
@@ -493,9 +338,7 @@ fn albedo_matches_the_atlas() {
         for i in 0..n {
             for (c, a) in acc.iter_mut().enumerate() {
                 let u = atlas[base + i * 4 + c] as f32 / 255.0;
-                // The atlas is `Rgba8UnormSrgb`, so the mean is taken after decoding and never
-                // before -- averaging the bytes biases every entry dark, which is the argument
-                // `textures::downsample` already makes for the mips.
+
                 *a += if u <= 0.04045 {
                     u / 12.92
                 } else {
@@ -515,23 +358,9 @@ fn albedo_matches_the_atlas() {
     }
 }
 
-/// Ground of the reference colour leaves the floor's **brightness** exactly where it was.
-///
-/// **This is batch 57's exposure assert with one rung's worth of the same argument.** That
-/// batch asserted an unoccluded probe returns exactly 1, because a screenshot pair cannot
-/// separate a global exposure shift from an occlusion appearing. The same is true here and
-/// worse: a bounce that multiplied every floor in the world by 1.4 would look like a feature
-/// working, in every vantage at once, and no metric in the fixture would call it.
 #[test]
 fn reference_ground_leaves_the_exposure_alone() {
-    // A flat field of one block type is the whole test: the gather normalises by its own
-    // weight, so the form factor and the azimuth count both divide out.
-    //
-    // **The claim is in luminance and not per channel, and the difference is the feature.**
-    // Over grass the multiplier is about (0.416, 1.259, 0.156) -- the floor turns green -- and
-    // what must not move is what that does to the *brightness* of the floor. The per-channel
-    // identity is a different claim about a different input: an unbaked texel returns 1.0, and
-    // that is what makes the control bit-exact. `probe::BOUNCE_REF` separates the two.
+
     let want = block::luma(probe::FLOOR_TINT);
     let m = probe::bounce_of_uniform_ground(block::ALBEDO[block::GRASS as usize]);
     for (axis, v) in m.iter().enumerate() {
@@ -545,8 +374,7 @@ fn reference_ground_leaves_the_exposure_alone() {
             "axis {axis}: the floor over reference ground has luminance {lit}, was {want} -- the bake's normalisation has moved and every frame in the world just changed exposure, which no capture in the fixture would attribute to this"
         );
     }
-    // And the paired positives, which is `lessons.md`'s rule: a no-op claim alone cannot be
-    // told from a not-wired-up one, so the quantity is read again where it must *not* be 1.
+
     let s = probe::bounce_of_uniform_ground(block::ALBEDO[block::SNOW as usize]);
     assert!(
         s[3][1] > 2.0,
@@ -561,12 +389,6 @@ fn reference_ground_leaves_the_exposure_alone() {
     );
 }
 
-/// One tap serves both fields, which is the whole cost claim of this batch.
-///
-/// **`probe_field` returns a `vec4` for exactly this reason**, and a later edit splitting it
-/// into two functions taking the sample twice would double the read cost of the feature while
-/// leaving every picture identical -- so no capture, no control and no `bitexact` row could
-/// catch it, and the only thing that can is a claim about the source.
 #[test]
 fn one_tap_serves_both_fields() {
     let src = render::shader_source();
@@ -592,24 +414,6 @@ fn one_tap_serves_both_fields() {
     }
 }
 
-// ---- batch 58: the claims a sweep that moved everything structurally cannot make ----
-//
-// **`bitexact` says all 18 vantages moved, and a global tint would say exactly that too.**
-// `lessons.md` records the negative form of this -- *a no-op claim cannot be told apart from a
-// not-wired-up claim* -- and these three are its positive form: a feature that moved the whole
-// frame cannot be told from a constant that moved the whole frame, and the control table's
-// "18 of 18 move" row is the number that looks like proof and is not.
-//
-// So the three things the field claims to be, each read somewhere the sweep cannot reach:
-// it varies with **position**, it varies with **direction**, and the direction is the **right
-// way round**. The first two would pass on a badly broken build; only the third pins the sign.
-
-/// A chunk origin whose columns show more than one surface block, found rather than hardcoded.
-///
-/// **Searched with an assert rather than written down**, which is `lessons.md`'s *put the assert
-/// in the tool, not in the plan*: a hardcoded shoreline that stopped being a shoreline would
-/// leave every test below passing vacuously over uniform grass, and nothing in any output would
-/// say so.
 fn mixed_surface_chunk(gen: &voxelcraft::worldgen::WorldGen) -> IVec3 {
     for cz in -4..4i32 {
         for cx in -4..4i32 {
@@ -632,7 +436,6 @@ fn mixed_surface_chunk(gen: &voxelcraft::worldgen::WorldGen) -> IVec3 {
     );
 }
 
-/// One chunk's heights, the way `stream::build` hands them to the bake.
 fn heights_of(gen: &voxelcraft::worldgen::WorldGen, o: IVec3) -> Box<[i32; 64 * 64]> {
     let mut h = Box::new([0i32; 64 * 64]);
     for z in 0..64usize {
@@ -643,7 +446,6 @@ fn heights_of(gen: &voxelcraft::worldgen::WorldGen, o: IVec3) -> Box<[i32; 64 * 
     h
 }
 
-/// The bounce varies with **position**, which a constant cannot do.
 #[test]
 fn the_bounce_varies_across_a_chunk() {
     let gen = voxelcraft::worldgen::WorldGen::new(1337);
@@ -663,11 +465,6 @@ fn the_bounce_varies_across_a_chunk() {
     );
 }
 
-/// The bounce varies with **direction**, which is what six slabs are for.
-///
-/// If `bounce_lobes` returned one lobe for every axis, or if the azimuthal weighting were
-/// dropped, every axis at a probe would hold the same mean and this would read exactly 0 --
-/// while the picture still changed everywhere and every other test in this file still passed.
 #[test]
 fn the_bounce_varies_between_axes() {
     let gen = voxelcraft::worldgen::WorldGen::new(1337);
@@ -678,7 +475,7 @@ fn the_bounce_varies_between_axes() {
     for pz in 0..probe::PER_AXIS {
         for py in 0..probe::PER_AXIS {
             for px in 0..probe::PER_AXIS {
-                // The four horizontal axes, which are the ones carrying an azimuthal lobe.
+
                 let l = block::luma(d.get_bounce(0, px, py, pz));
                 let r = block::luma(d.get_bounce(1, px, py, pz));
                 let b = block::luma(d.get_bounce(4, px, py, pz));
@@ -696,21 +493,12 @@ fn the_bounce_varies_between_axes() {
     );
 }
 
-/// And the direction is the **right way round**, which is the only one of the three that can
-/// catch a sign error.
-///
-/// **The expectation is recomputed by a different route on purpose.** The bake weights its
-/// samples by an azimuthal cosine lobe and a radial form factor; this takes a plain unweighted
-/// mean of the surface albedo in each half-plane. A transliteration of the gather would agree
-/// with a mirrored lobe table as happily as with a correct one, and a mirrored lobe table is
-/// exactly the bug that would leave every other assertion in this file passing.
 #[test]
 fn the_brighter_ground_is_on_the_brighter_axis() {
     let gen = voxelcraft::worldgen::WorldGen::new(1337);
     let o = mixed_surface_chunk(&gen);
     let d = probe::bake(&gen, &heights_of(&gen, o), o, true);
 
-    // The probe whose -X and +X slabs disagree most, which is where the sign is legible.
     let (mut best, mut at) = (0.0f32, (0usize, 0usize, 0usize));
     for pz in 0..probe::PER_AXIS {
         for py in 0..probe::PER_AXIS {
@@ -730,7 +518,6 @@ fn the_brighter_ground_is_on_the_brighter_axis() {
         best.abs()
     );
 
-    // The ground on each side, by a plain box mean out to the radius the form factor favours.
     let (px, _, pz) = at;
     let cx = o.x + probe::SPACING / 2 + probe::SPACING * px as i32;
     let cz = o.z + probe::SPACING / 2 + probe::SPACING * pz as i32;
@@ -763,14 +550,6 @@ fn the_brighter_ground_is_on_the_brighter_axis() {
     );
 }
 
-/// Batch 60, roadmap R3. The second bounce can only take light away, and it takes some.
-///
-/// **Both halves are the assertion and neither alone is.** That the shadowed field is nowhere
-/// *brighter* is the claim that the term is an occlusion rather than a re-colouring -- it
-/// weights the gather's numerator and leaves its weight alone, so every probe can only lose.
-/// That it is somewhere *darker* is the claim that it fires at all, which is the failure
-/// `docs/lessons.md` calls indistinguishable from a feature that was never wired up: a bake
-/// that ignored `bounce_shadow` entirely would pass the first assertion perfectly.
 #[test]
 fn shadowed_ground_bounces_no_more_than_open_ground() {
     let gen = voxelcraft::worldgen::WorldGen::new(1337);
@@ -795,24 +574,6 @@ fn shadowed_ground_bounces_no_more_than_open_ground() {
     );
 }
 
-/// The second bounce touches the bounce and **nothing else**.
-///
-/// Batch 57's occlusion cube shares the texel and shares the horizon march, and the exposure
-/// term is computed from the same `col_h` that feeds `tan_h` -- so the one way this batch could
-/// go wrong invisibly is by perturbing the sky occlusion on its way past. `--no-probe-cube` and
-/// `--no-probe-shadow` would then stop being independent controls, and every batch-57 number in
-/// the ledger would quietly stop describing the shipping build.
-/// Batch 71, roadmap D1. The lattice upload can collide between two resident chunks only
-/// when their origins differ by the field's 512-block toroidal period in an axis -- which
-/// the plan's 160-block LOD-0 reach makes impossible in the steady state, and the unload
-/// grace plus a teleport makes transiently possible. `sync_world` therefore defers any
-/// bake outside `UPLOAD_REACH`, and these three tests are the constant's claim: inside
-/// it, collisions are arithmetically impossible, so no order of writes -- hash, timing or
-/// sorted -- can change the field.
-///
-/// The texel block a chunk owns starts at `(origin / SPACING) mod 64`, mirroring
-/// `write_probe`; asserting against the formula here is the same shape the rest of this
-/// file uses against the shader.
 fn texel_block(origin: IVec3) -> [i32; 3] {
     let o = origin.to_array();
     [
@@ -825,8 +586,7 @@ fn texel_block(origin: IVec3) -> [i32; 3] {
 #[test]
 fn two_uploadable_chunks_can_never_share_a_texel() {
     let cam = Vec3::new(1000.5, 80.0, -700.5);
-    // Origins arrive on chunk grid; sweep them on one Y so equality of the texel block
-    // really is the toroidal X/Z collision the race needed.
+
     let gx = (cam.x as i32 / 64) * 64;
     let gz = (cam.z as i32 / 64) * 64;
     let mut in_window = Vec::new();
@@ -852,9 +612,7 @@ fn two_uploadable_chunks_can_never_share_a_texel() {
 
 #[test]
 fn the_alias_the_race_needed_is_real_outside_the_window() {
-    // Guard the guard: the collision the window forbids is otherwise reachable -- the
-    // chunk one period over maps to the very texels the near one does. If either of
-    // these properties moves, the review above has to be re-done rather than assumed.
+
     let near = IVec3::new(64, 64, 128);
     let far = near + IVec3::new(512, 0, 0);
     assert_eq!(texel_block(near), texel_block(far));
@@ -863,15 +621,7 @@ fn the_alias_the_race_needed_is_real_outside_the_window() {
 
 #[test]
 fn the_window_is_what_the_arithmetic_says_it_is() {
-    // The reach computed from itself, not retyped: LOD 0's 64-block chunks are wanted
-    // while their *center* is within `size * factor * fade_band` of the camera, and that
-    // is the set a deferred bake must never belong to. The window is horizontal, so the
-    // horizontal component of that reach -- no more than the reach itself at any camera
-    // height -- is what has to fit, plus the corner's horizontal half-diagonal of
-    // 32*sqrt(2) ~= 45.3: the origin a chunk center is measured from can be that far
-    // out in XZ. 224 - (160 + 45.3) = 18.7 blocks of margin at *any* altitude; an
-    // earlier spherical predicate spent the margin on camera height instead, and the
-    // measured A/B is why the predicate is now XZ-only.
+
     let reach = (voxelcraft::voxel::DIM as f32)
         * voxelcraft::config::Config::default().lod.factor
         * voxelcraft::config::Config::default().lod.fade_band;
@@ -880,10 +630,7 @@ fn the_window_is_what_the_arithmetic_says_it_is() {
         probe::UPLOAD_REACH > reach + half_diagonal_xz,
         "the plan can want a bake `uploadable` would defer"
     );
-    // Chunk origins sit on a 64 grid, so the first representable distance over 448 is
-    // 512 -- the alias distance itself. Two uploads both inside the window differ by at
-    // most 2 * UPLOAD_REACH in XZ, and 448 just fits, so the bound holds with no grid
-    // slack to spend: this assertion is what keeps that from being read as headroom.
+
     const {
         assert!((2.0 * probe::UPLOAD_REACH) <= 512.0 - 64.0);
     }
@@ -891,9 +638,7 @@ fn the_window_is_what_the_arithmetic_says_it_is() {
 
 #[test]
 fn a_deferred_bake_survives_to_its_own_window() {
-    // `sync_world`'s re-queue, without the renderer: a far bake dropped back into the map
-    // is offered again next frame, so a camera returning to its chunk uploads it rather
-    // than leaving the texels on the field's identity fill.
+
     let mut w = World::new();
     let far = ChunkKey::new(0, IVec3::new(8, 0, 0));
     let data = probe::ProbeData {
@@ -911,7 +656,7 @@ fn a_deferred_bake_survives_to_its_own_window() {
     }
     let deferred: Vec<ChunkKey> = w.take_probe_dirty().into_keys().collect();
     assert_eq!(deferred, vec![far]);
-    // And when the camera does come back, the same doorway passes it through.
+
     assert!(probe::uploadable(
         far.origin(),
         far.origin().as_vec3() + Vec3::new(32.0, 0.0, 32.0)
@@ -930,6 +675,3 @@ fn the_second_bounce_leaves_the_occlusion_cube_alone() {
         "the sky occlusion moved when only the bounce's ground exposure was switched on"
     );
 }
-
-
-

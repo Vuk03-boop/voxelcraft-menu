@@ -1,15 +1,8 @@
-//! Decoupled per-voxel attributes (block ids) and the shared brick/word pool.
-//!
-//! Each leaf (4^3 cell) owns one 32-bit table entry: either an inline uniform block id
-//! (bit 31 set) or a word offset to a palette block in the pool. Light bricks use the
-//! same pool.
-
 use crate::block::BlockId;
 
 pub const UNIFORM_BIT: u32 = 1 << 31;
 const MIN_ALLOC: usize = 4;
 
-/// Word pool with power-of-two size classes and free lists.
 pub struct WordPool {
     data: Vec<u32>,
     free: Vec<Vec<u32>>,
@@ -103,11 +96,6 @@ fn bits_for(n: usize) -> u32 {
     }
 }
 
-/// Encode the block ids of one leaf. `present` marks which of the 64 voxels exist.
-/// Returns an inline uniform entry, or the offset (relative to `out`) of a palette block
-/// appended to `out`.
-// `i` indexes `ids` and is *also* the voxel's bit position in `present` and its slot in the
-// packed index array. Iterating the slice instead, as clippy suggests, throws that away.
 #[allow(clippy::needless_range_loop)]
 pub fn encode_leaf(ids: &[BlockId; 64], present: u64, out: &mut Vec<u32>) -> u32 {
     let mut pal: [BlockId; 64] = [0; 64];
@@ -150,7 +138,6 @@ pub fn encode_leaf(ids: &[BlockId; 64], present: u64, out: &mut Vec<u32>) -> u32
     off
 }
 
-/// Decode one voxel from a table entry.
 #[inline]
 pub fn decode_leaf(words: &[u32], entry: u32, voxel_bit: u32) -> BlockId {
     if entry & UNIFORM_BIT != 0 {
@@ -168,7 +155,6 @@ pub fn decode_leaf(words: &[u32], entry: u32, voxel_bit: u32) -> BlockId {
     (pw >> ((idx & 1) * 16)) as BlockId
 }
 
-/// Number of words a palette block occupies (0 for inline entries).
 pub fn block_words(words: &[u32], entry: u32) -> usize {
     if entry & UNIFORM_BIT != 0 {
         return 0;
@@ -178,6 +164,3 @@ pub fn block_words(words: &[u32], entry: u32) -> usize {
     let bits = ((hdr >> 8) & 0xFF) as usize;
     1 + n.div_ceil(2) + (64 * bits) / 32
 }
-
-
-

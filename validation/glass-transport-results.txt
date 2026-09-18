@@ -1,6 +1,0 @@
-Adapter: {'vendor': 'llvmpipe', 'architecture': '', 'device': 'llvmpipe (LLVM 19.1.7, 256 bits)', 'description': 'Mesa 25.0.7-2+deb13u1 (LLVM 19.1.7)', 'stackgroup_min_size': 4, 'stackgroup_max_size': 128, 'vendor_id': 65541, 'device_id': 0, 'adapter_type': 'CPU', 'backend_type': 'Vulkan'}
-Traceback (most recent call last):
-  File "/home/user/voxelcraft-menu/validation/check_glass_transport.py", line 54, in <module>
-    assert abs(v[0]-3.5)<1e-5 and v[1]==material and abs(v[2]-11.5)<1e-5,v[:4]
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: (3.5, 0.0, 512.0, 0.0)

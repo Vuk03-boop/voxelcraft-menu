@@ -1,4 +1,3 @@
-//! Dedicated shadow resources. No Frame/visibility-key ABI changes.
 use wgpu::*;
 pub fn sampled(binding:u32)->BindGroupLayoutEntry {
     BindGroupLayoutEntry { binding, visibility:ShaderStages::COMPUTE,

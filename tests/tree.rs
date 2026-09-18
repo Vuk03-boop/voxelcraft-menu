@@ -1,7 +1,3 @@
-// These tests hold **transliterations** of formulations in `src/`, on purpose: the point of
-// the copy is that it reads the same as the original, so a divergence is visible. Clippy's
-// modernisations here would silently make the two halves of each mirror look different, which
-// costs exactly the thing the duplication buys.
 #![allow(clippy::int_plus_one)]
 #![allow(clippy::manual_is_multiple_of)]
 #![allow(clippy::manual_range_contains)]
@@ -30,7 +26,6 @@ fn hash3(x: u32, y: u32, z: u32, seed: u32) -> u32 {
     h ^ (h >> 15)
 }
 
-/// Rolling hills with a few caves and scattered ore-like block variety.
 fn terrain(x: u32, y: u32, z: u32, seed: u32) -> BlockId {
     let fx = (x as f32 + seed as f32 * 13.0) * 0.11;
     let fz = (z as f32 + seed as f32 * 7.0) * 0.09;
@@ -39,7 +34,7 @@ fn terrain(x: u32, y: u32, z: u32, seed: u32) -> BlockId {
         return AIR;
     }
     if y > 8 && y + 6 < h && hash3(x / 3, y / 3, z / 3, seed) % 11 == 0 {
-        return AIR; // cave pocket
+        return AIR;
     }
     if y + 1 == h {
         GRASS
@@ -186,13 +181,13 @@ fn edit_full_chunk() {
     assert_eq!(w.get_block(p - IVec3::Y), STONE);
     assert!(!w.chunks[&key(0, 0, 0)].root.is_full());
     assert_eq!(w.chunks[&key(0, 0, 0)].solid_count, 64 * 64 * 64 - 1);
-    // Fill it back with the same block: chunk collapses to a full uniform root again.
+
     assert!(w.set_block(p, STONE));
     assert!(w.chunks[&key(0, 0, 0)].root.is_full());
     assert_eq!(w.chunks[&key(0, 0, 0)].attr, AttrRef::Uniform(STONE));
     assert_eq!(w.leaves.live_elems, 0);
     assert_eq!(w.inners.live_elems, 0);
-    // Different block type inside a uniform chunk forces an attribute table.
+
     assert!(w.set_block(p, GLOWSTONE));
     assert_eq!(w.get_block(p), GLOWSTONE);
     assert_eq!(w.get_block(p + IVec3::Z), STONE);
@@ -233,7 +228,7 @@ fn random_edits_match_dense_mirror() {
     let rec = &w.chunks[&k];
     let solid = dense.iter().filter(|&&b| b != AIR).count() as u32;
     assert_eq!(rec.solid_count, solid);
-    // Rebuilding from the mirror must produce identical geometry pools when shared.
+
     let fresh = build_local(&dense);
     let live_before = w.leaves.live_elems;
     w.insert_local(key(9, 9, 9), fresh);
@@ -283,20 +278,9 @@ fn chunk_key_math() {
     );
 }
 
-/// P9's two cheap shapes live on one packing: the per-L1 `water_line` (the y-bound, which
-/// `line_skip` reads in the shader) and the leaf count it shares a word with. The count
-/// fits in 12 bits by tree arithmetic, the line rides the top nibble
-/// (`world.rs` inserts it as `leaf_prefix | wl << 28`), and `PREFIX_MASK` is what keeps
-/// the two honest when the words are read back. These pin exactly that arithmetic, on a
-/// stratified chunk where every cell's right answer is derivable by hand -- the family of
-/// shapes the "lower half" proposals all reduce to, so that whichever of them a
-/// measurement next approves builds on pinned ground.
 #[test]
 fn water_line_packing_and_stratification() {
-    // Land to y=9 inclusive, water 10..=12, air above: cell l1y=0 is all-dry, the cell
-    // l1y=? straddling y=9..12 holds both, and there is no water-only cell because the
-    // water is only three blocks deep. Building the same outline twice -- once with the
-    // water band in a different cell -- exercises both the dry and the mixed case.
+
     let dense = dense_from(|_x, y, _z| {
         if y <= 9 {
             DIRT
@@ -308,23 +292,16 @@ fn water_line_packing_and_stratification() {
     });
     let t = build_local(&dense);
 
-    // The mask and the word agree with the strata.
     for n in &t.l1 {
-        // Which 16^3 cell this node is: derivable from its position in DFS order only
-        // with the builder's loop nesting, so instead re-derive the expectation from the
-        // node's own data: a node's `water_line` is the local y (0..=15) of its highest
-        // non-water voxel, or 15 when it has none.
+
         if n.full {
-            // All-solid cells (y 0..=9 fully inside this cell) are dry through their
-            // top face: line 15.
+
             assert_eq!(n.water_line, 15, "full solid cell must report 15");
         } else {
-            // The only mixed cell sits at local y crossing 9: highest dry voxel is
-            // local 9 in its cell, rows 10..=15 are water or air above it.
+
             assert_eq!(n.water_line, 9 % 16, "mixed cell keeps the land top");
         }
-        // The packing never overlaps: masking the combined word back down must return
-        // the count exactly.
+
         assert_eq!(
             (n.leaf_prefix | ((n.water_line as u32) << 28)) & PREFIX_MASK,
             n.leaf_prefix,
@@ -332,18 +309,10 @@ fn water_line_packing_and_stratification() {
         );
     }
 
-    // `dry_mask` at the root: every cell here holds something a water-ignoring ray can
-    // stop at (the water is shallow, land is under it), so dry_mask == root_mask --
-    // no cell is water-*only* in this chunk.
     assert_eq!(t.dry_mask, t.root_mask);
     assert_ne!(t.root_mask, 0);
 }
 
-/// The other stratification case: deep water. Cells above the land top and under the
-/// waterline are water-*only* -- they must fall out of `dry_mask` (the root-level half
-/// of P9, shipped at batch 53) and their `water_line` must read 15, which is also the
-/// value that disarms `line_skip` for them: the root mask is what skips those cells,
-/// and this is the test that pins the two mechanisms to complementary domains.
 #[test]
 fn water_only_cells_report_fifteen_and_leave_the_dry_mask() {
     let dense = dense_from(|_x, y, _z| {
@@ -356,18 +325,10 @@ fn water_only_cells_report_fifteen_and_leave_the_dry_mask() {
         }
     });
     let t = build_local(&dense);
-    // Cells 1 (y 16..31): water only -> dry bit CLEAR, line 15.
-    // Cell 0 (y 0..15): land top at 4 -> dry bit SET, line 4.
-    // Cell 2 (y 32..47) is all air: no L1 node exists at all.
-    // The DFS order of t.l1 follows the builder's loops (l1z, l1y, l1x); with a
-    // stratified world only l1y varies, so the y=1 column's nodes are the last four.
+
     let column: Vec<_> = t.l1.iter().collect();
     assert!(!column.is_empty());
-    // Root cells: l1y in {0,1}. (y 48+ and 32+ cells are air -> no nodes.)
-    // The number of nodes per cell is DFS-ordered; assert via masks, not positions:
-    // exactly 4 cells' worth of nodes exist (l1x/l1z full sweep, both y cells where
-    // the second only where it is water-only).
-    // Find each side by its own signature instead of trusting order:
+
     let water_only = t
         .l1
         .iter()
@@ -377,9 +338,8 @@ fn water_only_cells_report_fifteen_and_leave_the_dry_mask() {
     let dry_solid = t.l1.iter().filter(|n| n.water_line == 15 && n.full).count();
     let carrying_top = t.l1.iter().filter(|n| n.water_line == 4).count();
     assert_eq!(dry_solid + carrying_top, 16, "the y=0 band's sixteen cells");
-    // dry_mask: cells present AND not water-only == y=0 band.
+
     assert_eq!(t.dry_mask.count_ones(), 16);
     assert!(t.dry_mask != t.root_mask, "root mask must include water-only cells");
     assert_eq!(t.root_mask.count_ones(), 32);
 }
-

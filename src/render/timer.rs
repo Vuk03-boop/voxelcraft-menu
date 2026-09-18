@@ -1,5 +1,3 @@
-//! GPU timestamp queries plus an async readback ring for shader counters.
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -10,7 +8,6 @@ const COUNTER_BYTES: u64 = 64;
 const TOTAL: u64 = 512;
 const RING: usize = 3;
 
-/// Query index pairs, two per pass (begin, end).
 pub mod q {
     pub const TILE_SELECT: u32 = 0;
     pub const MARCH: u32 = 2;
@@ -19,7 +16,7 @@ pub mod q {
     pub const RESOLVE: u32 = 8;
     pub const MARCH2: u32 = 10;
     pub const TAA: u32 = 12;
-    /// Batch 35's light-envelope scan. 14 is the last pair `MAX_QUERIES` has room for.
+
     pub const SHAFT: u32 = 14;
     pub const SHADOW_RAY: u32 = 16;
     pub const SHADOW_H: u32 = 18;
@@ -39,11 +36,7 @@ pub struct Readback {
     frame: usize,
     period: f32,
     timestamps: [u64; MAX_QUERIES as usize],
-    /// Shader counters, all raw except where noted. `[0]` is the select append counter, which
-    /// `finalize_recover` overwrites with the clamped recovery count; `[1]` deferred, `[2]`
-    /// recovered, `[3]` the **clamped** select count that `march` actually dispatched, and
-    /// `[4]`/`[5]` the raw select and recovery demands batch 22 added so the CPU can tell a
-    /// frame that fitted from a frame that was truncated.
+
     pub counters: [u32; 16],
     pub valid: bool,
 }
@@ -99,7 +92,6 @@ impl Readback {
             })
     }
 
-    /// Bracket multiple compute passes with the existing resolve-family pair.
     pub fn family_timestamp(&self, begin: bool) -> Option<wgpu::ComputePassTimestampWrites<'_>> {
         self.query_set.as_ref().map(|qs| wgpu::ComputePassTimestampWrites {
             query_set: qs,
@@ -108,7 +100,6 @@ impl Readback {
         })
     }
 
-    /// Harvest whichever slot has finished mapping, then encode this frame's copies.
     pub fn encode(&mut self, encoder: &mut wgpu::CommandEncoder, counters: &wgpu::Buffer) {
         let slot = self.frame % RING;
         if self.slots[slot].pending && self.slots[slot].ready.load(Ordering::Acquire) {
@@ -130,7 +121,7 @@ impl Readback {
             self.slots[slot].ready.store(false, Ordering::Release);
         }
         if self.slots[slot].pending {
-            // Still in flight; skip a readback rather than stall.
+
             self.frame += 1;
             return;
         }
@@ -143,7 +134,6 @@ impl Readback {
         self.frame += 1;
     }
 
-    /// Request the map for the slot just encoded. Call after submit.
     pub fn map_latest(&mut self) {
         let slot = (self.frame + RING - 1) % RING;
         let s = &self.slots[slot];
@@ -157,7 +147,6 @@ impl Readback {
         }
     }
 
-    /// Elapsed milliseconds for the pass starting at query index `begin`.
     pub fn ms(&self, begin: u32) -> f32 {
         if !self.valid {
             return 0.0;
@@ -186,6 +175,3 @@ impl Readback {
         .sum()
     }
 }
-
-
-

@@ -1,4 +1,3 @@
-//! Native CPU contracts for architecture options; GPU integration lives in validation/check_split.py.
 mod support;
 use voxelcraft::config::{Config, parse_from};
 use voxelcraft::settings::Preferences;

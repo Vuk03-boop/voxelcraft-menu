@@ -1,18 +1,14 @@
-//! Dense 64^3 scratch to local (thread-private) tree conversion, and cell arithmetic.
-
 use super::attributes::{decode_leaf, encode_leaf, UNIFORM_BIT};
 use crate::block::{BlockId, AIR, WATER};
 
 pub const DIM: usize = 64;
 pub const VOL: usize = DIM * DIM * DIM;
 
-/// Dense scratch index; x fastest, then z, then y (power-of-two shifts only).
 #[inline]
 pub fn dense_index(x: usize, y: usize, z: usize) -> usize {
     x | (z << 6) | (y << 12)
 }
 
-/// Bit index of a cell within its 4^3 parent: x | y<<2 | z<<4.
 #[inline]
 pub fn cell_bit(x: u32, y: u32, z: u32) -> u32 {
     x | (y << 2) | (z << 4)
@@ -33,7 +29,6 @@ pub fn voxel_bit(x: u32, y: u32, z: u32) -> u32 {
     cell_bit(x & 3, y & 3, z & 3)
 }
 
-/// Local coordinates (0..4 each) of a cell bit.
 #[inline]
 pub fn bit_xyz(bit: u32) -> (u32, u32, u32) {
     (bit & 3, (bit >> 2) & 3, (bit >> 4) & 3)
@@ -42,80 +37,41 @@ pub fn bit_xyz(bit: u32) -> (u32, u32, u32) {
 #[derive(Default)]
 pub struct LocalL1 {
     pub mask: u64,
-    /// Start of the leaf run in `LocalTree::leaves` (unused when `full`).
+
     pub leaf_start: u32,
     pub leaf_prefix: u32,
     pub full: bool,
-    /// Roadmap P9: the highest node-local y (0..=15) of any occupied non-water voxel in
-    /// this 16^3 node, or **15 for "no bound"**. Everything strictly above it is water or
-    /// air, so a ray that ignores water may take the whole 16-row in one step. Packed
-    /// into the interned node's top nibble at `world.rs`'s interning -- `leaf_prefix` is
-    /// a count bounded by 4096 and never reaches the high four bits.
+
     pub water_line: u8,
 }
 
-/// A chunk tree built on a worker thread, before interning into the global pools.
 #[derive(Default)]
 pub struct LocalTree {
     pub root_mask: u64,
-    /// `root_mask` with every 16^3 cell holding **nothing but water** cleared (batch 53).
-    ///
-    /// A ray that ignores water is looking at a different world from the one the occupancy
-    /// tree describes, because **water is in that tree** -- which `docs/water.md` calls the
-    /// load-bearing choice, and it is, in both directions. A submerged primary ray, and every
-    /// refracted, reflected and shadow ray, therefore grinds through an ocean interior that
-    /// reads as solid at every level and is empty to it. This is the same 64-bit mask with
-    /// those cells taken out, so `march_chunk` can skip a water-only 16^3 in one step instead
-    /// of four, and a water-only 32^3 in one instead of sixteen.
-    ///
-    /// **Glass and foliage count as dry**, deliberately: a secondary ray ignores those too,
-    /// but the primary ray does not, and one mask that is right for every ray class is worth
-    /// more than three that are each right for one. The cost is that a pane in open water
-    /// stops the skip, and there is no such thing in a generated world.
-    ///
-    /// A stale **set** bit is slow and correct; a stale **clear** bit would delete geometry.
-    /// Every writer therefore only ever sets, which is the convention `has_water` already
-    /// uses one field along and for the same reason.
+
     pub dry_mask: u64,
     pub l1: Vec<LocalL1>,
     pub leaves: Vec<u64>,
-    /// One entry per leaf (in DFS order): inline uniform id or offset into `palette`.
+
     pub attrs: Vec<u32>,
     pub palette: Vec<u32>,
-    /// Set when every solid voxel has the same block id.
+
     pub uniform: Option<BlockId>,
-    /// Any water in this chunk at all. The shading passes need to tell water apart from
-    /// opaque geometry, and that costs an attribute lookup per cell; this flag is what
-    /// keeps the cost at zero for the overwhelming majority of chunks, which have none.
+
     pub has_water: bool,
-    /// Any cross-quad foliage in this chunk. Same job as `has_water` and the same reason:
-    /// the marcher can only tell a tuft from a cube by looking its block id up, and this
-    /// flag is what keeps that lookup off every chunk that has none -- which is every
-    /// coarse chunk, every chunk underground and every chunk in the sky.
+
     pub has_foliage: bool,
-    /// Any sub-voxel cutout block -- leaves. Third of the same kind and for the third time
-    /// the same reason: the marcher can only tell a carved cube from a whole one by looking
-    /// its block id up, and this keeps that lookup off every chunk holding no canopy.
+
     pub has_cutout: bool,
-    /// Any glass. Fourth of the same kind, and the one whose zero is load-bearing rather
-    /// than merely cheap: the generator places no glass anywhere, so every chunk of every
-    /// generated world carries `false` here and batch 38b's traversal cost is *zero* until
-    /// somebody builds with it. That is what makes the fourteen fixture vantages bit-exact
-    /// against the pre-38b binary by construction instead of by measurement.
+
     pub has_glass: bool,
-    /// Any emitter block. Fifth of the same kind, but read on the CPU rather than in the
-    /// marcher: roadmap P11's gate is per *frame* and uniform across it, so the flag
-    /// rolls up into `World`'s emitter count and never reaches the GPU per chunk.
-    /// **D5 turned the bool into the count it always implied** (see [`Self::emitters`]):
-    /// `set_block` can then disarm the gate on the frame the last lamp breaks instead of
-    /// on the someday its chunk streams out.
+
     pub has_emitter: bool,
-    /// Emitting voxels in the chunk. The exact datum behind `has_emitter`, kept per voxel
-    /// so an edit's (old, new) pair can move `World::emitter_chunks` at zero crossings.
+
     pub emitters: u32,
     pub solid_count: u32,
     pub leaf_count: u32,
-    /// Tight bounds of solid voxels in local voxel units, max exclusive.
+
     pub aabb_min: [u8; 3],
     pub aabb_max: [u8; 3],
 }
@@ -130,7 +86,6 @@ impl LocalTree {
     }
 }
 
-/// Build a local tree from a dense block array.
 pub fn build_local(dense: &[BlockId]) -> LocalTree {
     debug_assert_eq!(dense.len(), VOL);
     let mut t = LocalTree::default();
@@ -146,7 +101,7 @@ pub fn build_local(dense: &[BlockId]) -> LocalTree {
                 let mut l1mask = 0u64;
                 let leaf_start = t.leaves.len() as u32;
                 let mut all_full = true;
-                // Anything in this 16^3 that a water-ignoring ray would still stop at.
+
                 let mut l1_dry = false;
                 let mut max_nonwater_y = 0u32;
                 for lz in 0..4u32 {
@@ -248,7 +203,6 @@ pub fn build_local(dense: &[BlockId]) -> LocalTree {
     t
 }
 
-/// Read back one voxel from a local tree (test helper; slow).
 pub fn local_block(t: &LocalTree, x: u32, y: u32, z: u32) -> BlockId {
     let l1b = l1_bit(x, y, z);
     if (t.root_mask >> l1b) & 1 == 0 {
@@ -280,6 +234,3 @@ pub fn local_block(t: &LocalTree, x: u32, y: u32, z: u32) -> BlockId {
         decode_leaf(&t.palette, entry, vb)
     }
 }
-
-
-

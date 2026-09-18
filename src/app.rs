@@ -1,15 +1,3 @@
-//! The windowed mode: the surface, the event loop, and the per-frame update.
-//!
-//! Split out of `main.rs` by batch 22b. `App` holds `_instance` because the wgpu instance
-//! must outlive the surface built from it -- see the invariant in `CLAUDE.md`; dropping it
-//! invalidates the surface.
-//!
-//! This is the half of the old file that **no capture can verify**, which is worth stating
-//! plainly rather than leaving implied. `harness bitexact` proves the headless modes came
-//! through the move unchanged; nothing in `tests/` touches wgpu and no screenshot opens a
-//! window, so the only check on this module is that it compiles and that the game runs.
-//! The relocation was mechanical for exactly that reason.
-
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -60,7 +48,7 @@ struct App {
     loading_shown: bool,
     session_started: bool,
     saved_on_exit: bool,
-    /// Owns the surface's backing instance; dropping it invalidates the surface.
+
     _instance: Option<wgpu::Instance>,
     window: Option<Arc<Window>>,
     surface: Option<Surface>,
@@ -76,61 +64,37 @@ struct App {
     heatmap: bool,
     hiz: bool,
     time_of_day: f32,
-    /// The light envelope's height window. Owned here and not by the renderer because
-    /// filling it needs `WorldGen`, which the renderer has never been given.
+
     shaft: ShaftField,
     animation_time: f32,
-    /// Batch 70's idle-repaint driver: decides per presented frame whether a fresh render
-    /// could draw anything new. The rule is in `src/idle.rs`, the write-up is the batch's
-    /// row in `docs/ledger.md`.
+
     idle: idle::IdleRepaint,
-    /// Whether any authored field moves on its own -- the wave phase or the deck's wind --
-    /// because that is what caps the repaint cadence at [`idle::LIVE_ANIM_EVERY`]. It is a
-    /// property of the config, fixed at startup, and it deliberately does not inspect the
-    /// speeds frame by frame: a field that *can* move is treated as moving.
+
     idle_animated: bool,
-    /// Set once the first full render has been submitted, so no repaint can present before
-    /// anything has ever been rendered into the history.
+
     rendered_once: bool,
-    /// For the stats overlay: a 144 fps line next to a ~10 ms GPU line has to read as the
-    /// idle repaint it is, not as a broken timer -- the GPU line holds the last full
-    /// render's passes by design, since a repaint writes no timestamps.
+
     repainted_last: bool,
 }
-
 
 impl App {
     fn new(cfg: Config, journal: Arc<EditJournal>, preference_path: PathBuf, status: String) -> Self {
         let gen = Arc::new(cfg.worldgen());
         let mut player = Player::new(spawn_position(&gen));
         player.hotbar = cfg.hotbar;
-        // **The window restores without being asked, where a capture has to pass
-        // `--resume`.** Nothing here claims the camera -- there is no vantage, no
-        // `--cam-height`, no fixture measuring fourteen named cameras -- so a loaded journal
-        // is the whole answer to where the player is, and asking for that with a flag would
-        // be asking a save file to be told it is a save file. `Config::resume` carries the
-        // rest of that argument, from the side that does have to ask.
-        //
-        // This `if let` is one of the two lines in the batch no capture can reach, and the
-        // other is in `exiting` below. What a capture *does* reach is `Player::restore` and
-        // the whole file path behind it, through `--resume`, which is why that flag exists.
+
         if let Some(s) = journal.player() {
             player.restore(s);
         }
-        // **Outside that `if let` on purpose**, and outside `--resume`'s equivalent one file
-        // over: a bar is not a camera, so there is no vantage for a loaded one to overrule.
-        // `scene::start_player` carries the whole of that argument, including why it costs
-        // the existing capture corpus exactly nothing.
+
         player.bar = voxelcraft::journal::bar_for(&journal);
         let mut manager = ChunkManager::new(cfg.lod, gen.clone());
-        // One journal, two halves: the manager's workers replay it and the world records
-        // into it. Sharing the `Arc` is what makes an edit survive its chunk being unloaded
-        // and regenerated 240 frames later.
+
         manager.attach_journal(journal.clone());
         let mut world = World::new();
         world.attach_journal(journal);
         let idle_animated = cfg.wave_speed != 0.0 || cfg.clouds.speed != 0.0 || cfg.wind_sway;
-        // Read before moving Config below.
+
         let shaft_texel = cfg.shaft_texel;
         let prefs = Preferences::from_config(&cfg);
         let mut menu = Menu::new(prefs.clone());
@@ -214,7 +178,7 @@ impl App {
             r.resize(internal, size);
             self.rendered_once = false;
         }
-        // The history textures were just recreated: there is nothing to re-present yet.
+
         self.idle.invalidate();
     }
 
@@ -237,23 +201,14 @@ impl App {
                 }
             }
         }
-        // **Pick-block, and it is what makes the bar something a player owns.** Without it
-        // the only way a bar could differ from `block::HOTBAR` is a command-line flag, and a
-        // file that can only ever record the flag it was given is a file recording nothing.
-        //
-        // The block under the crosshair rather than the one beside it -- this is the only
-        // one of the three mouse buttons that reads `pick.block` without changing it. A
-        // block a bar may not hold leaves the slot alone, silently: the gesture is a click
-        // at a block and the feedback is the bar not moving, and `Player::pick_into_bar`
-        // carries the argument for which blocks those are.
+
         if self.input.mmb {
             if let Some(pick) = self.player.pick(&self.world) {
                 let id = self.world.get_block(pick.block);
                 self.player.pick_into_bar(id);
             }
         }
-        // Relight at most one chunk per frame: a full chunk fill costs ~1ms and the
-        // visual lag of a frame or two is imperceptible.
+
         if let Some(&key) = self.relight_queue.iter().next() {
             self.relight_queue.remove(&key);
             let gen = self.manager.generator().clone();
@@ -369,7 +324,7 @@ impl App {
     fn apply_preferences(&mut self, next: Preferences, persist: bool) {
         if let Err(e) = next.validate() { self.menu.status = e; return; }
         let plan = self.prefs.plan(&next);
-        // Defense in depth: never compile a new experimental variant in paused gameplay.
+
         if self.session_started && plan.experiments {
             self.menu.status = "Experimental switches require a restart. Change them on the title.".into();
             return;
@@ -377,7 +332,7 @@ impl App {
         let size = self.window_size();
         let internal = (((size.0 as f32 * next.scale) as u32).max(8),
                         ((size.1 as f32 * next.scale) as u32).max(8));
-        // Reject unsupported sizes before changing applied state or reallocating.
+
         let gpu = self.renderer.as_ref().map(|r| &r.gpu).or(self.menu_gpu.as_ref());
         if let Some(gpu) = gpu {
             let limits = gpu.device.limits();
@@ -518,8 +473,7 @@ impl ApplicationHandler for App {
         self.cfg.height = config.height;
         self._instance = Some(instance);
         self.surface = Some(Surface { surface, config });
-        // The title screen owns only GPU presentation and a small UI. No voxel
-        // renderer, probe textures or chunk streaming work is started before Play.
+
         self.menu_ui = Some(render::ui::UiRenderer::new(&gpu.device, &gpu.queue, format));
         self.menu_gpu = Some(gpu);
         self.window = Some(window);
@@ -535,7 +489,7 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        // UI consumes input before any gameplay state sees it.
+
         match &event {
             WindowEvent::CloseRequested => { self.request_quit(event_loop, false); return; }
             WindowEvent::Focused(focus) => {
@@ -656,8 +610,6 @@ impl ApplicationHandler for App {
         }
     }
 
-    /// Explicit Quit saves first and can report failure in the menu. This fallback
-    /// is only for an external event-loop shutdown, where cancellation is unavailable.
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         if !self.session_started || self.saved_on_exit { return; }
         if let Err(e) =
@@ -715,15 +667,6 @@ impl App {
             self.cfg.lod.view_distance,
         );
 
-        // Batch 70's token needs this from before `sync_world`: it drains `probe_dirty`,
-        // and a probe landing in the lattice changes pixels without bumping
-        // `World::version`, so the queue has to be read upstream of the drain. The
-        // batch-71 wrinkle is the map can *keep* entries: a bake deferred by
-        // `probe::UPLOAD_REACH` waits there until the camera returns, and letting it hold
-        // this flag would pin the idle repaint off forever at a place where nothing will
-        // ever upload. It becomes uploadable again on exactly the frame its chunk comes
-        // back into the window -- which is exactly the frame a render is owed, because
-        // that upload changes pixels this frame.
         let probes_pending = self
             .world
             .probe_dirty
@@ -735,7 +678,6 @@ impl App {
         renderer.sync_world(&mut self.world, cam);
         renderer.build_chunk_list(&self.manager.render_set, &self.world, cam, &frustum);
 
-        // Stats snapshot before the borrow of the renderer ends.
         self.stats.chunks_drawn = renderer.last_chunk_count;
         self.stats.chunks_loaded = self.world.chunks.len();
         self.stats.chunks_in_flight = self.manager.pending();
@@ -751,16 +693,7 @@ impl App {
         self.draw_overlay();
 
         let (sun_dir, daylight) = sun(self.time_of_day);
-        // Re-anchor the envelope's window if the camera has crossed a texel, and hand the
-        // renderer the heights only when it has. Walking pays for two 512-column strips; a
-        // stationary camera pays nothing at all after the first frame.
-        //
-        // **Inside the renderer's `if let`, and that is the whole of why it is written this
-        // way.** `dirty` is cleared by the next `update` whether or not anybody uploaded, so
-        // advancing the window on a frame with no renderer to give it to would consume the
-        // one fill that matters and leave the envelope buffer full of zeros -- which is not a
-        // crash or a black frame but an envelope at altitude 0, under which every sample is
-        // lit and the feature is silently absent.
+
         if let Some(r) = &self.renderer {
             self.shaft
                 .update(self.manager.generator(), cam.x, cam.z, self.cfg.canopy_lift);
@@ -782,9 +715,7 @@ impl App {
             time: self.animation_time,
             flags,
             spec_hi: spec_hi_from(&self.cfg)
-                // Batch 73 (P11): the emitter answer is a world fact, not a config fact,
-                // so it is computed per frame here; placing the first lamp rebuilds the
-                // pipeline, which `ensure_spec` caches like any other key change.
+
                 | if self.world.any_emitter_resident() {
                     render::FLAG_HI_EMITTER_WORLD
                 } else {
@@ -810,11 +741,6 @@ impl App {
             shaft_scan: scene::shaft_scan(&self.cfg, flags, sun_dir),
         };
 
-        // Batch 70: what does this vblank owe? The token names everything a fresh render
-        // can read that is allowed to have changed; `src/idle.rs` holds the rule and
-        // `tests/idle.rs` the proof of what forces a render. **Headless modes never reach
-        // this** -- `App::frame` has no capture caller, which is what keeps the fixture
-        // and every bench journal out of the cadence.
         let still = idle::StaticFrame {
             cam: cam.to_array(),
             yaw: self.player.yaw,
@@ -849,10 +775,7 @@ impl App {
             return;
         };
         match kind {
-            // **The claim:** all seven passes skipped, yet the image is bit-identical to
-            // presenting the last render again, because that is literally what
-            // `Renderer::repaint` does. The gate on `rendered_once` is the one postcondition
-            // of that claim the loop can know: there is a rendered frame to re-present.
+
             FrameKind::Repaint if self.rendered_once => {
                 renderer.repaint(&view);
                 self.repainted_last = true;
@@ -871,7 +794,7 @@ impl App {
 }
 
 pub(crate) fn run(mut cfg: Config) {
-    // Personal preferences never reach headless modes; this is window dispatch only.
+
     let path = settings::preference_path();
     let mut status = String::new();
     let mut prefs = match settings::load(&path) {
@@ -885,8 +808,7 @@ pub(crate) fn run(mut cfg: Config) {
         status = format!("Invalid window settings: {e}"); prefs = Preferences::default();
     }
     prefs.write_config(&mut cfg);
-    // Before the window, so a bad `--load-edits` path fails on the command line rather than
-    // opening a window onto a world that is quietly missing everything the player built.
+
     let journal = match journal::open(&cfg) {
         Ok(j) => j,
         Err(e) => {
@@ -899,6 +821,3 @@ pub(crate) fn run(mut cfg: Config) {
     let mut app = App::new(cfg, journal, path, status);
     event_loop.run_app(&mut app).expect("run");
 }
-
-
-

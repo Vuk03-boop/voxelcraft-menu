@@ -1,8 +1,3 @@
-//! Worldgen invariants: caves are carved, terrain is walkable, LODs agree on shape.
-// These tests hold **transliterations** of formulations in `src/`, on purpose: the point of
-// the copy is that it reads the same as the original, so a divergence is visible. Clippy's
-// modernisations here would silently make the two halves of each mirror look different, which
-// costs exactly the thing the duplication buys.
 #![allow(clippy::int_plus_one)]
 #![allow(clippy::manual_is_multiple_of)]
 #![allow(clippy::manual_range_contains)]
@@ -23,7 +18,7 @@ fn gen_chunk(gen: &WorldGen, key: ChunkKey) -> Vec<BlockId> {
 #[test]
 fn caves_are_carved_underground() {
     let gen = WorldGen::new(1337);
-    // A band of chunks well below the surface everywhere, so any air is a cave.
+
     let mut air_below_surface = 0u64;
     let mut total = 0u64;
     for cx in 0..3 {
@@ -36,7 +31,7 @@ fn caves_are_carved_underground() {
                     let h = gen.height(o.x + x as i32, o.z + z as i32);
                     for y in 0..64usize {
                         let wy = o.y + y as i32;
-                        // Only count well below the surface and above bedrock.
+
                         if wy > 8 && wy < h - 8 {
                             total += 1;
                             if dense[dense_index(x, y, z)] == AIR {
@@ -65,18 +60,12 @@ fn caves_are_carved_underground() {
     );
 }
 
-/// The named assertion is the point of this test: the top block of a column is *this
-/// biome's* surface, not merely something solid. It grew with the table in batch 9 rather
-/// than being relaxed, because "anything solid" is exactly what would pass while a desert
-/// quietly rendered as bare stone.
 #[test]
 fn surface_is_the_biomes_own_block() {
     let gen = WorldGen::new(1337);
     let mut checked = 0;
     let mut seen = [0u32; biome::BIOME_COUNT];
-    // A wide spread of chunks, so the sample crosses biomes instead of describing one.
-    // Terrain now spans internal Y 94..295, so a single slab reaches only a slice of the
-    // world; taiga and tundra peaks live two slabs above a desert floor.
+
     for &(cx, cz) in &[
         (0i32, 0i32),
         (12, -7),
@@ -100,9 +89,7 @@ fn surface_is_the_biomes_own_block() {
                     let cb = gen.column_biome(wx, wz);
                     let b = cb.def();
                     let top = dense[dense_index(x, ly as usize - 1, z)];
-                    // Below the tide line the shore rule wins; above the snow line the snow
-                    // rule does; a tree stands its trunk on top of either. A cave can also
-                    // open at the surface, which leaves the subsurface or stone exposed.
+
                     let expected: &[BlockId] = if h <= SEA_LEVEL + 2 {
                         &[SAND]
                     } else if h - 1 >= cb.snow_line {
@@ -121,10 +108,7 @@ fn surface_is_the_biomes_own_block() {
                     if expected.contains(&top) {
                         seen[cb.id as usize] += 1;
                     }
-                    // Below the tide line the column carries on as water, not air. Since
-                    // batch 14 a tuft of ground cover can stand there too -- and where one
-                    // does, it has to have obeyed the placer's own gates, so this checks
-                    // them rather than merely tolerating the new id.
+
                     let above = dense[dense_index(x, ly as usize, z)];
                     assert!(
                         above == AIR || above == WATER || above == TALL_GRASS,
@@ -172,13 +156,7 @@ fn surface_is_the_biomes_own_block() {
 
 #[test]
 fn slopes_stay_walkable() {
-    // Terrain amplitude must stay well under the noise wavelength, or the world turns
-    // into unclimbable spikes. Sample adjacent columns and bound the step.
-    //
-    // The area has to be wide enough to cross biome boundaries. A biome is ~1500 blocks,
-    // so the old +/-200 patch sat inside a single one and could not see the thing batch 9
-    // actually risks: the mountain amplitude sliding from 45 to 250 across a boundary.
-    // 6000 blocks on a stride-3 lattice covers many of them for the same sample count.
+
     let gen = WorldGen::new(1337);
     let mut worst = 0;
     let mut steep = 0;
@@ -206,8 +184,7 @@ fn slopes_stay_walkable() {
 
 #[test]
 fn coarse_lod_follows_the_same_surface() {
-    // A LOD-2 chunk samples the same height field, so its top voxel should sit near the
-    // real terrain height rather than drifting.
+
     let gen = WorldGen::new(1337);
     let key = ChunkKey::new(2, IVec3::new(0, 0, 0));
     let dense = gen_chunk(&gen, key);
@@ -219,9 +196,7 @@ fn coarse_lod_follows_the_same_surface() {
             let wx = o.x + x as i32 * s + s / 2;
             let wz = o.z + z as i32 * s + s / 2;
             let h = gen.height(wx, wz);
-            // Skip proxy vegetation and the sea: like a LOD-0 tree they sit above the
-            // surface on purpose, and the invariant under test is that the *ground* does
-            // not drift. `tests/water.rs` covers the sea's own coverage.
+
             let top = (0..64usize).rev().find(|&y| {
                 let b = dense[dense_index(x, y, z)];
                 b != AIR && b != LEAVES && b != PINE_LEAVES && b != LOG && b != WATER
@@ -242,9 +217,6 @@ fn coarse_lod_follows_the_same_surface() {
     );
 }
 
-/// Canopy coverage over the same patch of world at every LOD. The proxies exist to keep
-/// a forested hill looking forested across a transition, so the fraction of ground under
-/// leaves has to land near the LOD-0 value, not merely be non-zero.
 #[test]
 fn coarse_canopy_density_matches_lod0() {
     use voxelcraft::block::{AIR, LEAVES};
@@ -254,7 +226,7 @@ fn coarse_canopy_density_matches_lod0() {
     let mut heights = Box::new([0i32; 64 * 64]);
     let mut cover = [0f64; 4];
     for lod in 0..=3u8 {
-        // Cover the same 512-block square of world at every level.
+
         let side = 8 >> lod;
         let slabs = 512 >> (6 + lod);
         let n = (side * 64) as usize;
@@ -266,7 +238,7 @@ fn coarse_canopy_density_matches_lod0() {
                     gen.generate(key, &mut dense, &mut heights);
                     for z in 0..64usize {
                         for x in 0..64usize {
-                            // Slabs are visited bottom-up, so a higher one overwrites.
+
                             if let Some(t) =
                                 (0..64).rev().find(|&y| dense[dense_index(x, y, z)] != AIR)
                             {
@@ -297,11 +269,6 @@ fn coarse_canopy_density_matches_lod0() {
     }
 }
 
-/// Top block of every column of a 512-block square at one LOD, paired with the biome id at
-/// the point the generator itself sampled -- the column centre at that stride. Only the
-/// slabs that can hold the surface are generated: the canopy lives at the terrain height,
-/// and a chunk wholly above it already early-outs, so this is the same answer for a third
-/// of the work.
 fn surface_survey(gen: &WorldGen, lod: u8, origin: IVec3) -> Vec<(BiomeId, BlockId)> {
     let side = 8 >> lod;
     let chunk = 64i32 << lod;
@@ -329,7 +296,7 @@ fn surface_survey(gen: &WorldGen, lod: u8, origin: IVec3) -> Vec<(BiomeId, Block
                 gen.generate(ChunkKey::new(lod, base), &mut dense, &mut heights);
                 for z in 0..64usize {
                     for x in 0..64usize {
-                        // Slabs are visited bottom-up, so a higher one overwrites.
+
                         if let Some(t) = (0..64).rev().find(|&y| dense[dense_index(x, y, z)] != AIR)
                         {
                             top[(cx as usize * 64 + x) + (cz as usize * 64 + z) * n] =
@@ -350,20 +317,10 @@ fn surface_survey(gen: &WorldGen, lod: u8, origin: IVec3) -> Vec<(BiomeId, Block
         .collect()
 }
 
-/// 9d, and the trap batch 9 was warned about. `coarse_canopy_density_matches_lod0` averages
-/// over whatever its one patch happens to contain, so a biome that went bald at every level
-/// -- a desert whose palms stand on sand while the placer still asks for grass -- would move
-/// that average by a fraction of a per cent and pass. This asks each biome separately.
-///
-/// It attributes every column to its own biome rather than looking for a patch that is only
-/// one biome, because two of the six never form one: plains and savanna sit in the *middle*
-/// temperature and humidity band, and on smooth noise a middle band is a ribbon a few
-/// hundred blocks wide, not a region. Four regions and two ribbons is what a 3x3 grid over
-/// two scalars gives you.
 #[test]
 fn per_biome_canopy_matches_lod0() {
     let gen = WorldGen::new(1337);
-    // Spread far enough apart to reach every cell of the grid between them.
+
     let regions = [
         IVec3::new(0, 0, 0),
         IVec3::new(2048, 0, -1536),
@@ -411,10 +368,7 @@ fn per_biome_canopy_matches_lod0() {
             columns[0][id]
         );
         if b.tree_scale == 0.0 {
-            // Not exactly zero: a canopy is 5 columns wide and its trunk decides the
-            // biome, so a taiga tree standing one column inside the border overhangs two
-            // columns of tundra. Two orders of magnitude under the sparsest treed biome is
-            // an overhang; anything near it would be trees actually being placed here.
+
             for (lod, c) in cover.iter().enumerate() {
                 assert!(
                     *c < 0.0001,
@@ -444,23 +398,6 @@ fn per_biome_canopy_matches_lod0() {
     }
 }
 
-/// Batch 18's whole claim in one number: the coarse ground wears meadow at the rate the
-/// fine ground wears tufts, per biome.
-///
-/// This is the density test `coarse_canopy_density_matches_lod0` is for trees, and it can
-/// afford to be far tighter than that one for a reason worth saying out loud. A proxy tree
-/// has to match a *canopy area* it cannot reproduce -- one coarse voxel shadows `s*s`
-/// columns, so the rate has to be rescaled by the proxy's own footprint and the result
-/// drifts 1.25-1.7x per biome. A meadow is one voxel standing for one voxel's worth of
-/// colour, so `coarse_meadow` stamps at `ground_cover` **unscaled** and the two rates are
-/// the same expression evaluated at two strides. What is left to drift is only the sampling:
-/// the coarse column asks the forest field once at its centre where the fine columns ask it
-/// `s*s` times, and coarse height resampling moves a few columns across the tide and tree
-/// lines.
-///
-/// The per-biome check is what makes the shared expression load-bearing rather than merely
-/// tidy. A second copy that agreed on the day it was written would pass an aggregate test
-/// and fail this one the moment `grass_scale` moved in one biome.
 #[test]
 fn coarse_meadow_density_matches_lod0() {
     let gen = WorldGen::new(1337);
@@ -484,8 +421,7 @@ fn coarse_meadow_density_matches_lod0() {
         for lod in 0..4usize {
             for (id, block) in surface_survey(&gen, lod as u8, origin) {
                 columns[lod][id as usize] += 1;
-                // The two representations of the same thing: a real tuft at LOD 0, and the
-                // repainted surface that stands in for one everywhere else.
+
                 let painted = if lod == 0 { TALL_GRASS } else { MEADOW };
                 if block == painted {
                     cover[lod][id as usize] += 1;
@@ -511,9 +447,7 @@ fn coarse_meadow_density_matches_lod0() {
             rate[3] / rate[0].max(1e-9)
         );
         if b.grass_scale == 0.0 {
-            // Exactly zero, and unlike the canopy's treeless check there is no overhang to
-            // allow for: a meadow is one column wide, so a bare biome that shows any at all
-            // has a gate reading the wrong column.
+
             for (lod, r) in rate.iter().enumerate() {
                 assert_eq!(
                     cover[lod][id],
@@ -533,19 +467,7 @@ fn coarse_meadow_density_matches_lod0() {
         );
         for lod in 1..4 {
             let ratio = rate[lod] / rate[0];
-            // The band is *derived*, not fitted. `coarse_meadow` stamps at
-            // `min(1, cover * MEADOW_SPREAD)`, so its rate over any set of columns is
-            // between `cover` and `cover * MEADOW_SPREAD` for every distribution of the
-            // forest field there is: at or above 1.0 because the spread is at least 1, and
-            // at or below the spread because saturation only ever takes rate away. A ratio
-            // outside it means the two placers are no longer reading one expression.
-            //
-            // The 5% is for the denominators and not for the rule: both rates are counted
-            // against *all* columns of the biome, and a column under a canopy is not one
-            // either placer may paint -- so the coarse canopy running 1.25-1.7x LOD 0's,
-            // which is a caveat this engine has carried since batch 9, moves the two
-            // denominators apart. Savanna comes out at 1.78 against a ceiling of 1.75 for
-            // exactly that reason and nothing else.
+
             assert!(
                 (1.0..=MEADOW_SPREAD * 1.05).contains(&(ratio as f32)),
                 "{} meadow at lod {lod} is {ratio:.3}x its LOD 0 cover ({:.2}% vs {:.2}%),                  outside 1.0..={:.2}",
@@ -558,16 +480,6 @@ fn coarse_meadow_density_matches_lod0() {
     }
 }
 
-/// The trap batch 9 was warned about, measured where it would actually bite. Both tree
-/// placers used to ask for `GRASS`; they now ask for **this biome's own surface**, and the
-/// difference is invisible in aggregate coverage — a desert whose palms all failed the gate
-/// would move the world's canopy fraction by hundredths of a per cent and every other test
-/// would pass.
-///
-/// So this counts trunks against eligible columns and divides by the biome's own
-/// `tree_scale`. That normalised rate is a property of the forest noise alone, so it has to
-/// land in the same place for every biome regardless of surface block; a biome whose gate
-/// rejects its own surface reads exactly zero.
 #[test]
 fn trees_grow_on_every_biomes_own_surface() {
     let gen = WorldGen::new(1337);
@@ -575,9 +487,7 @@ fn trees_grow_on_every_biomes_own_surface() {
     let mut heights = Box::new([0i32; 64 * 64]);
     let mut trunks = [0u64; biome::BIOME_COUNT];
     let mut eligible = [0u64; biome::BIOME_COUNT];
-    // Every third chunk over +/-2000 blocks. Biomes are ~1500 blocks across, so a solid
-    // block of chunks around the origin reaches two or three of them; a sparse lattice over
-    // a wide area reaches all six for a third of the generation cost.
+
     for cz in (-32..32i32).step_by(3) {
         for cx in (-32..32i32).step_by(3) {
             for cy in 1..4 {
@@ -590,7 +500,7 @@ fn trees_grow_on_every_biomes_own_surface() {
                         let cb = gen.column_biome(wx, wz);
                         let h = heights[x + z * 64];
                         let ly = h - o.y;
-                        // The placer's own gates, so "eligible" means what it means there.
+
                         if ly < 1 || ly + 7 >= 64 || h <= SEA_LEVEL + 2 || h > cb.tree_line {
                             continue;
                         }
@@ -648,27 +558,10 @@ fn trees_grow_on_every_biomes_own_surface() {
     );
 }
 
-// ---- Batch 91, roadmap A5 (`--tree-blue-noise`): the canopy's LOD cliff, closed in the
-// generator ----
-//
-// What is pinned here is the flag's behavioural contract, without a renderer: at rest the
-// world is the legacy one (proxy cells all written), and armed it is the *same trees* read
-// through the R3 rank field -- holes only where proxies already were, trunks never touched,
-// the survivor count near `LEAF_FILL`. The transmittance-matching constant itself is
-// compile-time pinned in `src/worldgen.rs` against `render::LEAF_FILL`, so a drift between
-// the carve and the decimation cannot build.
-
 const A5_SEED: i32 = 90210;
 
 fn coarse_keys(gen: &WorldGen) -> Vec<ChunkKey> {
-    // LOD 2 (stride 4): 256-block chunks at y = 0, above which the generator's tree-line
-    // rules already exclude the placer. **Locate the canopy, don't assume it.** Batch 94
-    // fixed the (x, y, z) transposition -- and the corrected fixed grid became the next
-    // fragile premise: this seed's 1 km slice at mz 0..2 keeps only 337 leaf-touching
-    // pairs total, where a clustering test asks four digits per axis. So scan a bounded
-    // window for the four leaf-richest chunks: deterministic for a fixed seed, and honest
-    // about what it means to fail -- if even the window holds no canopy, the tree placer
-    // is the finding, named by the assert below, not a margin silently retested.
+
     let mut ranked: Vec<(usize, ChunkKey)> = Vec::new();
     for mz in 0..6 {
         for mx in 0..12 {
@@ -720,14 +613,7 @@ fn a5_flag_off_writes_solid_proxies_everywhere_and_on_thins_them() {
         if la > 0 {
             proxied += 1;
         }
-        // Holes may open only inside cells that the legacy proxy would have stamped, and
-        // every other kind of cell must be *identical*: same trees, same terrain, one
-        // difference -- the rank decision on a leaf write. This is the A/B discriminant a
-        // reverted-by-construction arm cannot give, because the legacy map is the input.
-        // Foliage here means *either* species: the stamp writes the biome's own leaf id
-        // (`b.leaf`), so pine parcels open holes in PINE_LEAVES. A predicate naming only
-        // `LEAVES` pattern-matches one species and shouts at a legal pine hole -- batch
-        // 98's hardware round ate exactly that (its failure line read: 16 -> 0).
+
         for (&x, &y) in a.iter().zip(b.iter()) {
             assert!(
                 y == x || ((x == LEAVES || x == PINE_LEAVES) && y == AIR),
@@ -746,62 +632,25 @@ fn a5_flag_off_writes_solid_proxies_everywhere_and_on_thins_them() {
     );
 
     let ratio = on_leaves as f64 / off_leaves as f64;
-    // `binomial(p, n)` at p = 0.62 across this many cells is a knife edge; the window is
-    // the *contract* -- near LEAF_FILL, not a point estimate -- so it lands visibly wide.
+
     assert!(
         (0.45..=0.85).contains(&ratio),
         "decimated share {ratio:.3} of {off_leaves}..{on_leaves} leaves is not near LEAF_FILL"
     );
 
-    // Deterministic by construction: the same fields drawn twice must be the same field,
-    // because the temporal pipeline's claim that a chunk's content is a pure function of
-    // its key cannot survive an unstable rank.
     let key = ChunkKey::new(2, IVec3::new(1, 0, 0));
     assert_eq!(gen_chunk(&on, key), gen_chunk(&on, key));
 }
 
 #[test]
 fn a5_rank_field_is_not_white_noise() {
-    // The blue-noise claim, at the scale it matters: white noise would keep 62% of cells
-    // too, so counting cannot tell the fields apart. What *does* is the survivor pattern's
-    // clustering -- under i.i.d. Bernoulli(p = 0.62) a share 0.4493 of mixed neighbour
-    // pairs survive both cells (p^2/(1 - (1-p)^2)); an even rank field separates them.
-    //
-    // Batch 94 measured all three axes of the generator's own field (threshold R3 = 0.62,
-    // rank drawn at world-coordinate step 4, so one axis of stride crosses a different
-    // amount of the hash's period per direction):
-    //     x: 0.3922 -- better than the coin but not much; batch 91's bound 0.40 sat 0.008
-    //         off the field's own value and was a knife-edge in disguise.
-    //     z: 0.2793 -- the axis where the field is visibly blue.
-    //     y: 0.6366 -- ABOVE the coin: vertical neighbours *re*-correlate. That is a
-    //         property to record, not a defect to fix: the claim this flag keeps is the
-    //         mean transmittance (0.62, pinned by the share test above), and canopy
-    //         columns re-correlating says nothing about that mean. Blue in plan, brown
-    //         in profile, coin or better on every axis.
-    // The claim is therefore pinned on z, whose measurement has real margin, and the
-    // other two axes are pinned as *properties* (x beats the coin, y beats it from above)
-    // so a future field change that collapses any of the three is loud rather than silent.
-    //
-    // Batch 98's sampling repair moved *where* the y property can be read. These loops
-    // now watch the actual LOD-2 proxies, where `canopy = (trunk_h / s).max(1)` is one
-    // voxel tall: the stamped shell carries no vertical pair among survivors at all
-    // (the round measured 0.000 vs the coin's 0.449). The 0.6366 figure was the *rank
-    // field's*, not the shell's -- so chunk pixels pin the shell's structural bound
-    // instead, and the field lattice at the bottom of this test re-earns the axis
-    // properties on `canopy_rank3` at the same step-4 stride. One honest correction to
-    // 94's table: on the full 3D lattice the z share reads 0.391, better than the coin
-    // in x's league; the 0.279 figure was one canopy *slice*, where a constant A2*y
-    // phase reshuffles the z stride's fractional iterates -- slice-constrained numbers
-    // are not the field's property, and the pin below targets the field.
+
     let mut on = WorldGen::new(A5_SEED);
     on.tree_blue_noise = true;
-    // Count, per axis, the share of leaf-touching orthogonal pairs in which both cells
-    // survived: pairs over bare air say nothing about the pattern, pairs of one are the
-    // count, pairs of two are the clustering case.
-    let mut pairs = [0u64; 3]; // x, y, z adjacency
+
+    let mut pairs = [0u64; 3];
     let mut both = [0u64; 3];
-    // Sample where the canopy actually is (unarmed counts -- the holes do not move the
-    // forest, only the representation of it), then measure the armed field on those chunks.
+
     for key in coarse_keys(&WorldGen::new(A5_SEED)) {
         let d = gen_chunk(&on, key);
         for x in 0..64usize {
@@ -817,8 +666,7 @@ fn a5_rank_field_is_not_white_noise() {
                         if !l_lo && !l_hi {
                             continue;
                         }
-                        // `there` is always the higher-addressed neighbour, so each
-                        // touching pair is counted exactly once.
+
                         pairs[axis] += 1;
                         both[axis] += (l_lo && l_hi) as u64;
                     }
@@ -832,7 +680,7 @@ fn a5_rank_field_is_not_white_noise() {
          search says the canopy vanished, not the margin"
     );
     let cov = 0.62f64;
-    let coin = cov * cov / (1.0 - (1.0 - cov) * (1.0 - cov)); // 0.4493
+    let coin = cov * cov / (1.0 - (1.0 - cov) * (1.0 - cov));
     let shared = |axis: usize| both[axis] as f64 / pairs[axis] as f64;
     assert!(
         shared(2) < coin * 0.8,
@@ -847,28 +695,16 @@ fn a5_rank_field_is_not_white_noise() {
         "along x the field must at least beat the coin ({:.3} vs {coin:.3})",
         shared(0)
     );
-    // The third chunk-pixel axis is not a share at all at LOD 2: `r = 2 / s` is 0 and
-    // `canopy = 4 / s` is 1 at stride 4, so a proxy is exactly one cell, every tree owns
-    // one column, and a leaf's vertical neighbour cannot also be a leaf -- no vertical
-    // pair can survive both cells whatever the hash does (batch 97's quoted 0.6366
-    // therefore could never have come from stride-4 chunk pixels; it was measured on
-    // the field, which is where the lattice below re-earns it). The fork pinned the
-    // same construction from the other side at its second gate: a nonzero `both` is
-    // precisely the loud signal that `coarse_trees`' shape constants moved.
+
     assert_eq!(
         both[1], 0,
         "a LOD-2 proxy is exactly one cell (r = 2/s == 0, canopy = 4/s == 1): a surviving \
          vertical leaf pair means the shape constants moved, not the rank field"
     );
 
-    // Batch 94's blue-in-plan / brown-in-profile claim lives on the rank field, so
-    // re-earn it there: gate `canopy_rank3` against `COARSE_CANOPY_KEEP` on a
-    // world-coordinate lattice at the same step 4, and count the touching-pair shares
-    // per axis. Window base cannot move the figures -- the field is
-    // `frac(ax + by + cz + phase)`, translation splits into the phase.
     let mut fpairs = [0u64; 3];
     let mut fboth = [0u64; 3];
-    const STEP: i32 = 4; // the LOD-2 world step 94's measurement was taken at
+    const STEP: i32 = 4;
     for wx in 0..24i32 {
         for wy in 0..24i32 {
             for wz in 0..24i32 {
@@ -904,4 +740,3 @@ fn a5_rank_field_is_not_white_noise() {
         fshared(2)
     );
 }
-

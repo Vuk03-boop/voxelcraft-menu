@@ -1,4 +1,3 @@
-//! Pure contracts. No native GPU/window is opened by this test target.
 mod support;
 use voxelcraft::config::{Config, parse_from};
 use voxelcraft::menu::{Menu, Page, Screen, Setting};

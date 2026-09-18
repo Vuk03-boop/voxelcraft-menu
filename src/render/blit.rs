@@ -1,32 +1,22 @@
-//! Fullscreen presentation of the compute pass output: tone-map the linear HDR trace
-//! target, then encode for display.
-
 use bytemuck::{Pod, Zeroable};
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct BlitUniform {
-    /// 1 when `format` has no hardware sRGB encode, so the shader has to encode itself.
+
     encode: u32,
-    /// A10's curve arm (`--tone-map`): 0 is the knee hyperbola, 1 the Narkowicz ACES
-    /// fit. Set once, at `new`; a swap at anything higher frequency would be nothing.
+
     tone: u32,
-    /// G1's warm grade (`--grade`, batch 95): 0 is the pre-95 presentation. Spends the
-    /// first padding word, so the uniform's size does not move.
+
     grade: u32,
-    /// Batch 101's `--grade-strength` dial: lerps the graded pixel back toward the
-    /// pre-grade one. Spends the last padding word -- the uniform is still 16 bytes.
-    /// 1.0 is bit-exact with the batch-97 grade (mix at 1.0 returns its second
-    /// argument exactly), so no control pixel moves by construction.
+
     strength: f32,
 }
 
 pub struct BlitPass {
     pipeline: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
-    /// One per possible source: `resolve`'s output, then the two temporal history buffers.
-    /// Which one is on screen alternates with the frame parity, and rebuilding a bind group
-    /// every frame to say so would be work for nothing.
+
     bind_groups: Vec<wgpu::BindGroup>,
     sampler: wgpu::Sampler,
     uniform: wgpu::Buffer,
@@ -190,6 +180,3 @@ fn make_bg(
         ],
     })
 }
-
-
-
