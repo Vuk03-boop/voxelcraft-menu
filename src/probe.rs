@@ -1,4 +1,4 @@
-//! The directional sky-visibility field: a six-axis ambient cube every 8 blocks, baked on a
+//! The directional sky-visibility field: a six-axis ambient cube every 4 blocks, baked on a
 //! worker and read by `shade_hit` as one trilinear tap.
 //!
 //! **What it replaces is a constant.** `face_shade` is a hardcoded 1.00/0.80/0.62/0.50 per
@@ -102,7 +102,7 @@ use glam::{IVec3, Vec3};
 /// the tap stays one trilinear read, the lattice keeps its 512-block XZ period (the
 /// texture's X and Z axes widen 64 -> 128 to hold it, which is what lets every
 /// `UPLOAD_REACH` claim in this file stand unedited), and the cost lands in the two
-/// resources the scarcity table has marked idle since batch 1 -- 8x the bake on the
+/// resources the scarcity table has marked idle since batch 1 -- 4x the bake on the
 /// workers, 8x the VRAM (12.6 MB -> ~100 MB, which is roadmap L5's whole argument).
 pub const SPACING: i32 = 4;
 
@@ -435,7 +435,7 @@ pub fn bake(
 
     // One horizon march per probe *column*, shared by the eight probes stacked in it: the
     // occluder set does not depend on the probe's height, only the angle it subtends does.
-    // That is the difference between 20,480 height samples per chunk and eight times as many.
+    // That is the difference between 20,480 height samples per chunk and sixteen times as many.
     //
     // **The bounce gather rides the same march and the same samples, and that is the whole
     // reason it is affordable.** What it adds per sample is one biome lookup on
@@ -690,7 +690,7 @@ fn bounce_from_albedo(
 /// walks `STEPS` columns outward along each azimuth and already knows every one of their
 /// heights; the sky a sample at step `si` can see is decided by the same columns, read as a
 /// maximum of slopes rather than of heights. So this is a second pass over an array that is
-/// already in cache, and the chunk's 20,480 height samples stay 20,480.
+/// already in cache, and the chunk's 81,920 height samples stay 81,920.
 ///
 /// **What it can see is one azimuth and its reverse**, because that is the only direction the
 /// ray carries data about: a ravine running *along* the ray reads as open. The estimate is

@@ -211,7 +211,7 @@ to score a capture that warned.
 
 ## Specialization: `SPEC_MASK`
 
-**`march` and `resolve` are the only passes with more than one pipeline.** Anything in
+**`SpecPipes` holds seven pipelines: `primary_shadow`, `shadow_blurs[2]`, `glass_resolve`, `water_resolve`, `march`, `resolve` and `water_sec`.** Anything in
 `SPEC_MASK` is folded into the shader as a WGSL `override` at pipeline-compile time instead of
 branched on per pixel, which takes the dead feature's **code** out of the module rather than
 merely skipping it.

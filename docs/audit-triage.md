@@ -305,3 +305,68 @@ survives `cargo test`.
 `docs/research/` is absent from this checkout, and `screenshots/` holds only its README. The
 GPU-side claims in §1.1-§1.2 need a real vantage run to close, and every timing figure quoted
 by the original reports remains theirs, not this file's.
+
+## 7. What was changed on this branch
+
+Applied, in this order, and each one reviewed as a diff rather than trusted to a script:
+
+**The §1.1 fix, in the smallest form that works.** `march_chunk` (`common.wgsl:1381`),
+`shadow_ray` (`:2106`) and `shadow_ray_t` (`:2222`) each now build a guarded direction
+locally and take `inv` and `pos_dir` from it. Three deliberate choices:
+
+- Only `inv` and `pos_dir` read the guarded vector. Hit positions, normals and `t` still
+  use the untouched `rd`, so `select` returning `rd` unchanged for any ray with no
+  near-zero component means those rays are **bit-identical** -- this repo's whole control
+  system rests on that, and shifting a hit position by 1e-6 as a side effect would have
+  cost more than the bug.
+- `pos_dir` had to move with `inv`. Guarding only the reciprocal leaves the step direction
+  computed from the raw zero (`rd.y > 0.0` is false) while `tn.y` becomes a large *negative*
+  value that then wins the axis test, so the march crawls down a cell forever. The pair is
+  consistent with `ray_dir`, which is why the primary path has never shown this.
+- The guard expression is copied from `ray_dir` (`:1015-1016`) rather than invented, since
+  no shader validator exists in this environment.
+
+**Corrections to §1.1 as originally reported.** The site at `:2135` is inside `shadow_ray`,
+not `trace_local`. And `cutout_march` (`:1315`) has the same raw `1.0 / rd` shape on its own
+DDA; it is **not** touched here, because nothing in the reports establishes that an
+axis-aligned ray reaches it, and a speculative guard in a hot loop is a cost without a
+demonstrated bug.
+
+**Left deliberately alone.** `menu.rs:111` (`Setting::ShadowPass=>p.shadow_pass=true`):
+flipping it to a toggle would create a control that reports success and is then clobbered by
+`settings.rs:167`, which forces the value on every decode -- a worse trap than the dead arm,
+and `tests/split_passes.rs:34` already pins `restore_defaults()` leaving `shadow_pass` true.
+The right fix is deleting `IsolateGlass`/`ShadowPass` from the enum, `experimental()`,
+`adjust()` and the settings round-trip, which crosses the `version=2` key gate at
+`split_passes.rs:24` and so needs a compiler to attempt. Same reason `ENTRY_POINTS` stays at
+11 entries despite §2.7: widening a public const array is exactly the edit that fails to
+build, and it feeds a `shaderstats` binary that does not exist in this tree.
+
+**Docs and comments:** every present-tense item in §2 and §3.4 -- the seven-off claim, the
+revert column, the A/B recipes, the R8/7-by-per-pixel shadow layout in `EXPERIMENTS.md`, the
+Render lab row, twelve stale code comments in `probe.rs`, `stream.rs`, `mod.rs`, `timer.rs`
+and `common.wgsl`, the `--water-mottle` struct doc, comment and help text, `docs/gpu.md`'s
+pipeline count, the `--probe-sun` rows, and `docs/water.md`'s control table. §4.1's three
+pipe breaks are escaped; §4.2's detached rows are **not** re-seated, since moving table rows
+around in `ledger.md` risks the one thing `tests/docs.rs` does check.
+
+**Two new facts, found while editing rather than auditing.** `.gitattributes` declares every
+`.wgsl` LF; this tree is 3261/3261 CRLF, and `docs/` is CRLF where the file says LF -- so
+§4.3's problem is wider than a phantom third exception, and given `* -text` the bytes are
+what a clone gets. Second: the prose here is hard-wrapped, which is why any single-line
+substitution in a wrapped paragraph has to be self-contained; four of my first-pass
+replacements read correctly alone and broke the next line, and were rewritten.
+
+**Verification actually performed here**, none of it by compiler: per-file line-ending census
+before and after (no file became mixed; `common.wgsl` gained exactly 12 lines), brace parity
+against `HEAD` (259/259 unchanged), paren parity (+18 open, +18 close, exactly the three
+guards), each construct confirmed to exist verbatim elsewhere in the same module, `rd_dda`
+defined before every use in all three functions, and every edit anchored on a substring that
+occurs exactly once -- five anchors failed that test and were skipped then repaired rather
+than force-applied.
+
+**Still owed, and not claimable from this environment:** `cargo check`, `cargo clippy`,
+`cargo test`, the `bitexact` sweep, and `validation/check_glass_transport.py`, which is the
+run that decides whether §1.1 is fixed. Expect it to stop failing and expect no pixel change
+anywhere else; if `bitexact` moves on a vantage that has no axis-aligned ray, the guard is
+wrong and should be reverted rather than tuned.

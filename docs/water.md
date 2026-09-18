@@ -434,7 +434,7 @@ All four wave controls are free (`SPEC_MASK` folds them out of the module rather
 | `--no-wave-aniso` | pre-batch-19: footprint measured across the ray instead of on the water | free |
 | `--no-wave-shoal` | pre-batch-20: full swell in a two-block lagoon. Composes with `--no-wave-aniso` to reproduce the pre-19 hash exactly | free |
 | `--no-wave-fill` | pre-batch-25: four octaves spanning the band instead of eight subdividing it | free |
-| `--water-mottle 0.2` | pre-batch-26 sea | free (atlas constant) |
+| `--water-mottle` | retired by WA01: parsed, warned about, force-zeroed | nothing |
 | `--wave-clamp F` | how far the *traced* reflection may tilt. Ships at **0** by measurement | -- |
 | `--no-water-shadow-cut` | pre-batch-41: a surface reached through the water marches its own shadow 48 blocks again instead of 16. **The only control here that costs time to switch on** -- it is the batch's saving, handed back | free (a pipeline key; `shaderstats` is identical in both directions) |
 | `--no-water-far` | pre-batch-48: a submerged camera tests chunks to the full view distance again, rather than stopping a water-locked tile at `WATER_FAR_DIST`. Above water it is unreachable -- the flag is only ever read ANDed with `FLAG_UNDERWATER`. **Bit-exact at sixteen of seventeen vantages; `sea-horizon` is the one that can see it** (67,621 pixels at max delta 23) | free; **-2.776 ms at `sea-horizon`** and **-1.125 at `underwater`** to switch on at the shipped 128, against -0.835 and -0.291 at batch 48's 256; `tile_select` reads 0.150 against 0.160 either way |

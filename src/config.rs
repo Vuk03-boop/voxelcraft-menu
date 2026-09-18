@@ -15,7 +15,7 @@ pub struct Config {
     /// perfectly clear water, which is the A/B partner for every claim about depth colour.
     pub water_absorb: f32,
     /// Amplitude of the water layer's per-block mottling. **Ships at 0.0 since batch 26**;
-    /// `--water-mottle 0.2` is the control and reproduces the pre-batch-26 build bit for bit.
+    /// `--water-mottle` is retired: WA01 parses it, warns and force-zeroes the value, so 0.2 reproduces nothing.
     /// **Not a correction of batch 21b, which chose 0.2 on purpose.** 21b built this
     /// flattening as its candidate fix and measured it moving **0 pixels at fourteen
     /// vantages** -- the null that proved the sea was reading the *glass* layer and broke
@@ -662,7 +662,7 @@ impl Default for Config {
             // a periodic stipple worth 27-34% of `speckle` at `coastline` and `open-sea`
             // against a smooth signal of under half a code value, and the whole of batch
             // 21's diamond weave at `lattice`. Reasoning in
-            // `docs/water.md`; `--water-mottle 0.2` reproduces the old sea.
+            // `docs/water.md`; `--water-mottle` is retired and its argument discarded.
             water_mottle: 0.0,
             water_reflect: true,
             water_refract: true,
@@ -1152,7 +1152,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                      --no-tint                no per-biome vegetation tint\n\
                      --tint-strength F        how far the biome tint is taken (default 1)\n\
                      --water-absorb F         scale water's extinction (0 = perfectly clear)\n\
-                     --water-mottle F         water layer mottling (ships 0; 0.2 = pre-batch-26)\n\
+                     --water-mottle F         water layer mottling (retired: parsed, warned, force-zeroed)\n\
                      --cam-height F           camera height in internal Y (default 40)\n\
                      --cam-yaw D              camera yaw in degrees (default 40)\n\
                      --cam-pitch D            camera pitch in degrees (default -14)\n\

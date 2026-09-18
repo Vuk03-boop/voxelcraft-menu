@@ -19,7 +19,7 @@ pub struct ChunkBuild {
     pub tree: LocalTree,
     pub light: Option<LightData>,
     /// Batch 57's ambient cube. Present for every LOD-0 chunk, **including an empty one**,
-    /// which is where it differs from `light` -- a probe eight blocks inside a chunk of pure
+    /// which is where it differs from `light` -- a probe four blocks inside a chunk of pure
     /// air is still read by the trilinear tap of a surface in the *neighbouring* chunk, so
     /// leaving it unbaked would leave that surface reading whatever the lattice held before.
     pub probe: Option<ProbeData>,

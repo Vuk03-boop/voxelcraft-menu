@@ -1058,7 +1058,7 @@ rank a look, so the user is the instrument.
 | `SKY_TINT_SAT` | `default` MAE | `canopy` MAE | reference points |
 |---|---|---|---|
 | 1.0 -- physical | 1.2185 | 0.6670 | under ADR 0001's 2.87 rejected-by-eye line |
-| **2.5 -- ships** | **3.0379** | **1.6791** | beside `--probe-sun`'s shipping 2.2248 at `default` |
+| **2.5 -- ships** | **3.0379** | **1.6791** | beside the shipping arm's 2.2248 at `default` |
 | 4.0 | 4.8419 | 2.6975 | approaching `--probe-sun-high`'s 5.7074, which the user rejected |
 
 **The user played the ladder and chose 2.5**, the same restraint they showed choosing batch 60's

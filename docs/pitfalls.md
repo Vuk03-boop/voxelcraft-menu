@@ -59,7 +59,7 @@ tree.
 checkout and rewrite most of `src/`.
 
 - **CRLF (6)**: `Cargo.toml`, `CLAUDE.md`, `PERF.md`, `README.md`, and
-  two strays -- `src/lib.rs`, `src/stats.rs`.
+  two strays -- `src/lib.rs`, `src/stats.rs`. The uploaded tree contradicts this map: every `.wgsl` and all of `docs/` are CRLF there. Check the bytes before anchoring an edit on a newline.
 - **LF (86)**: every `.wgsl`, and every `.rs` and `docs/` file apart from those two. **86 as of
   batch 57, 85 at 54, 84 at 53, 83 at 52, 82 at 43, 81 at 38b, 76 before that** -- each taken by counting rather than by
   quoting the line above it, the way this section says to. Batches keep adding documents and
