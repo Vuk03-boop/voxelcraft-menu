@@ -85,3 +85,49 @@ fn the_mask_is_exactly_the_named_bits() {
         u & !SPEC_HI_MASK
     );
 }
+
+fn quoted_names(src: &str, lead: &str, quote: &str) -> std::collections::BTreeSet<String> {
+    src.match_indices(lead)
+        .map(|(at, _)| {
+            let rest = &src[at + lead.len()..];
+            let end = rest.find(quote).expect("name is terminated");
+            rest[..end].to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn every_override_with_a_sibling_flag_is_wired_and_every_wired_name_exists() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mod_rs = std::fs::read_to_string(root.join("src/render/mod.rs")).expect("mod.rs");
+    let mut wgsl = String::new();
+    for f in [
+        "common", "tile_select", "march", "resolve", "taa", "shaft", "shadow",
+    ] {
+        wgsl.push_str(
+            &std::fs::read_to_string(root.join(format!("src/render/shaders/{f}.wgsl")))
+                .unwrap_or_else(|e| panic!("{f}.wgsl: {e}")),
+        );
+        wgsl.push('\n');
+    }
+    let overrides = quoted_names(&wgsl, "override SPEC_", ":");
+    let flags = quoted_names(&mod_rs, "pub const FLAG_HI_", ":");
+    for ov in &overrides {
+        let sibling = ov.replacen("SPEC_", "FLAG_HI_", 1);
+        if !flags.contains(&sibling) {
+            continue;
+        }
+        assert!(
+            mod_rs.contains(&format!("\"{ov}\"")),
+            "{sibling} sets a spec_hi bit nobody maps: {ov} is declared but never \
+             wired to it, so the flag is dead by construction"
+        );
+    }
+    for wired in quoted_names(&mod_rs, "\"SPEC_", "\"") {
+        assert!(
+            overrides.contains(&wired),
+            "mod.rs wires SPEC_{wired} but no shader declares the override -- a typo \
+             here specializes nothing"
+        );
+    }
+}

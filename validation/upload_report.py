@@ -126,8 +126,8 @@ CASES += [
     ("no-wave-fill",             ["--no-wave-fill"],                                          CH),
     ("wave-strong",              ["--wave-amp", "0.3", "--wave-scale", "12",
                                   "--wave-speed", "1.2"],                                     CH),
-    ("snell-bend",             ["--snell-bend", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
-    ("no-snell",               ["--no-snell", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
+    ("snell-bend",             ["--snell-bend", "--cam-submerge", "5", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
+    ("no-snell",               ["--no-snell", "--cam-submerge", "5", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
     ("caustics",                 ["--caustics"],                                              CH),
     ("cam-submerge",             ["--cam-submerge", "3"],                                     CH),
     ("no-light-rgb",           ["--no-light-rgb", "--demo-lamps", "--time", "0.30", "--cam-height", "-20", "--cam-yaw", "0", "--cam-pitch", "0"],  CH),
@@ -173,7 +173,7 @@ CASES += [
     ("no-tex-variation",         ["--no-tex-variation"],                                      CH),
     ("no-glass",               ["--no-glass", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
     ("glass-reflect",          ["--glass-reflect", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
-    ("isolate-glass",          ["--isolate-glass", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
+    ("isolate-glass",            ["--isolate-glass"],                                          UN),
     ("no-shadows",               ["--no-shadows"],                                            CH),
     ("soft-shadows",             ["--soft-shadows"],                                          CH),
     ("soft-shadows-hq",          ["--soft-shadows", "--soft-shadow-hq"],                      CH),
@@ -229,16 +229,14 @@ INERT_WHY = {
 # Without this, a paired arm diffs against the default capture and measures
 # camera motion instead of the flag.
 CTX = {
-    "snell-bend":           ["--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "30"],
-    "no-snell":             ["--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "30"],
+    "snell-bend":           ["--cam-submerge", "5", "--cam-yaw", "143", "--cam-pitch", "30"],
+    "no-snell":             ["--cam-submerge", "5", "--cam-yaw", "143", "--cam-pitch", "30"],
     "no-light-rgb":         ["--demo-lamps", "--time", "0.30", "--cam-height", "-20",
                              "--cam-yaw", "0", "--cam-pitch", "0"],
     "probe-noise":          ["--probe-fill", "0.65"],
     "no-glass":             ["--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143",
                              "--cam-pitch", "-25"],
     "glass-reflect":        ["--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143",
-                             "--cam-pitch", "-25"],
-    "isolate-glass":        ["--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143",
                              "--cam-pitch", "-25"],
     "sun-softness-narrow":  ["--soft-shadows"],
     "sun-softness-wide":    ["--soft-shadows"],
@@ -277,6 +275,8 @@ PERF_CASES = [
     ("shadow-dist-128",   ["--shadow-dist", "128"]),
     ("demo-glass-b",      ["--demo-glass", "--cam-height", "14", "--cam-pitch", "-20"]),
     ("glass-reflect-b",   ["--demo-glass", "--glass-reflect",
+                           "--cam-height", "14", "--cam-pitch", "-20"]),
+    ("isolate-glass-b",   ["--demo-glass", "--isolate-glass",
                            "--cam-height", "14", "--cam-pitch", "-20"]),
 ]
 

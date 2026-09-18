@@ -66,3 +66,18 @@ declared context. SUSPECT lost teeth for exactly one run; caught by reading
 the diffs instead of celebrating the green. Also closed by the same run:
 the water-sec perf anomalies were thermal ordering all along (drift ±5.4%
 with corrected re-run; scale-1.25's real number is +31%, expected).
+
+## "Zero pixels" twice: read the plumbing before renaming the test
+
+Two `SUSPECT` rows from the first paired-context run taught opposite lessons
+in the same hour. `isolate-glass` looked like dead plumbing — flag bit set,
+override declared, zero pixels — but the lane-split lives in `RESOLVE_LANE`
+wiring in `render/mod.rs` (a sed window had cut off the pair list) and the
+zero pixels *are* the contract: it is an output-preserving A/B pipeline, so
+it belongs in EXACT with `compact-shade-hit`, with a perf arm to say why it
+exists. `no-snell` was genuinely scene-gated, but by a constant, not a
+camera: `SNELL_MIN_DEPTH = 3.0` blocks makes a one-block-deep periscope
+identical on and off; the context needed submerge 5, not a new test. The
+guard against the first failure mode now lives in tests/spec_hi.rs: every
+`SPEC_` override with a `FLAG_HI_` sibling must be wired, and every wired
+name must exist — dead by construction is the failure regexes find quietest.

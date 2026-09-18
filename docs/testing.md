@@ -92,9 +92,13 @@ the demo builders sit 14 blocks ahead of the camera, which the default
 vantage leaves buried inside the front hill; the water-secondary share path
 and the soft-shadow contact both under-cover at the `--fast` 640x360 capture
 (they engaged at 960x540), which is why those arms are INERT rather than
-noiseless; and the first perf sweep's apparent regressions (compact +30%,
+noiseless; the first perf sweep's apparent regressions (compact +30%,
 water-sec-scale-4 +32%) were thermal ordering — the drift re-run now prices
-that in before anyone panics.
+that in before anyone panics; `isolate-glass` is an output-preserving
+lane-split A/B and sits in EXACT for the same reason as `compact-shade-hit`,
+with `isolate-glass-b` in the perf table to price it; and `--no-snell` only
+shows itself below `SNELL_MIN_DEPTH` (3 blocks), which is why its context
+submerges five.
 
 ## Protocol
 
