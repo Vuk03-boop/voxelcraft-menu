@@ -104,3 +104,27 @@ fn shaderstats_reads_the_shipping_module_through_render() {
         "shaderstats must label its sizes table as unspecialized"
     );
 }
+
+#[test]
+fn the_retired_water_mottle_flag_owns_up_in_help() {
+    let Some(cfg) = source("src/config.rs") else {
+        panic!("src/config.rs is the one parser and --help the one vocabulary");
+    };
+    assert!(
+        cfg.contains("\"--water-mottle\""),
+        "the retired flag must keep PARSING (harmlessly) so old launch lines do not break"
+    );
+    assert!(
+        cfg.contains("cfg.water_mottle=0.0"),
+        "a retired flag must be force-zeroed on parse, not threaded into a dead uniform"
+    );
+    assert!(
+        cfg.contains("retired: parsed, warned, force-zeroed"),
+        "the --help row must OWN the retirement -- the sticky version of this bug was a row \
+         that promised to reproduce a build the parser was silently zeroing"
+    );
+    assert!(
+        !cfg.contains("0.2 = pre-batch-26"),
+        "the help row must never again claim bit-identity with a build that no longer exists"
+    );
+}

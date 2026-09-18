@@ -52,3 +52,17 @@ camera. Benchmark truth: pairing beats screenshots. Each arm now ships with
 the vantage that exercises it (the same catalogue `src/harness/vantage.rs`
 curates), or with an explicit "expected inert in this scene, because ..."
 note. Never green-light a feature from one camera.
+
+## A diff against a different camera measures the camera, not the flag
+
+The first repaired run of `validation/upload_report.py` paired scene-context
+arms with their curated vantages but still diffed them against the *default*
+baseline — so every paired arm "passed" at 100% of frame by construction and
+said nothing about the feature it was meant to watch. Any diff-based guard
+needs an explicit statement of what baseline removes what variable; here the
+answer is a cached context baseline per distinct context (same pins, flag
+left off), and an import-time assert that every CTX arm's args end with its
+declared context. SUSPECT lost teeth for exactly one run; caught by reading
+the diffs instead of celebrating the green. Also closed by the same run:
+the water-sec perf anomalies were thermal ordering all along (drift ±5.4%
+with corrected re-run; scale-1.25's real number is +31%, expected).
