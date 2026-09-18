@@ -30,6 +30,7 @@ with soft shadows, water and atmosphere.
 | Headless capture | `cargo run --release -- --screenshot out.png` |
 | Compare captures | `cargo run --release -- --diff A.png B.png --crop X0,Y0,X1,Y1 --grid 4,4` |
 | Validation checks | `python3 validation/check_<area>.py` (9 scripts; see `docs/testing.md`) |
+| Full flag/perf report | `python3 validation/upload_report.py` -> `uploadme.txt` (`--fast` to shorten) |
 
 ## Architecture map (details: `docs/architecture.md`)
 

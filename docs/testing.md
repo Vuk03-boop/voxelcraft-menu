@@ -46,6 +46,30 @@ Python checkers over the tree/git history, run individually:
 | `check_diagnostics.py` | Diagnostic capture paths |
 | `check_family_timestamps.py` | Result-family timestamp ordering |
 | `check_glass_transport.py` | Glass light-transport transport results |
+| `upload_report.py` | Full baseline-vs-flag sweep: capture, diff, and bench every flag arm, verify restated defaults are bit-identical, exercise journals/lookbook/bench-terrain/`cargo test`, and write `uploadme.txt` for upload (`--fast`, `--skip-tests`, `--skip-lookbook`, `--skip-perf`, `--cases SUBSTR`) |
+
+## The upload report (for remote diagnosis)
+
+`python3 validation/upload_report.py` from the repo root builds the release
+binary, then writes `uploadme.txt` (plus a full command trace in
+`uploadme.txt.log` and PNGs in `uploadme_runs/`):
+
+1. **Environment + build**: host, toolchain, git HEAD, GPU adapter name,
+   `cargo build --release` result and warning count.
+2. **Baseline**: a pinned capture (960x540, seed 1337, uniform TAA) plus a
+   *determinism twin* — two identical captures must diff to zero.
+3. **Flag sweep**: every CLI arm as a screenshot diffed against the baseline
+   with the binary's own `--diff`. Arms that merely restate defaults must be
+   bit-identical (EXACT); feature arms must move pixels (CHANGE), and an arm
+   that moves nothing is reported SUSPECT rather than silently green.
+4. **Perf sweep**: `--bench-frames` under perf-relevant flags with
+   wall/gpu-total deltas vs baseline.
+5. **Functional**: edit-journal save/replay bit-identity, `--bench-terrain`
+   timings, `--lookbook`, and the full `cargo test --release` summary.
+
+Verdicts land at the end of the file: `FAIL` needs a fix, `SUSPECT` needs a
+look. The file is designed to be pasted back so someone else can diagnose
+or optimize from it.
 
 ## Protocol
 
