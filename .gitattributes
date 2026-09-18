@@ -1,15 +1,14 @@
 # No end-of-line conversion, on anything.
 #
-# This tree is deliberately mixed: Cargo.toml, CLAUDE.md, PERF.md and README.md are CRLF,
+# This tree is deliberately mixed: Cargo.toml, PERF.md and README.md are CRLF,
 # while every .wgsl is LF and .rs and docs/ are LF with exactly three exceptions --
-# src/lib.rs, src/stats.rs and docs/batch-11-godrays.md, which have been CRLF since before
-# the tree went under version control. Check the file before anchoring an edit on a newline
-# rather than trusting the rule; batch 22 re-verified that this list is still complete and
-# still three. Git for Windows defaults to
-# core.autocrlf=true, which would normalise the LF files to CRLF in the working copy on the
-# next checkout and quietly rewrite most of the source tree. `-text` turns that off so the
-# bytes in a clone are the bytes that were committed. Diffs are unaffected.
+# src/lib.rs, src/stats.rs and docs/batch-11-godrays.md, which have been CRLF since
+# before the tree went under version control. CLAUDE.md is a symlink to AGENTS.md
+# (LF) since the 2026-09-18 documentation pass replaced the old CRLF briefing.
+# Check the file before anchoring an edit on a newline rather than trusting the
+# rule; batch 22 re-verified that the exception list is still complete and still
+# three. Git for Windows defaults to core.autocrlf=true, which would normalise the
+# LF files to CRLF in the working copy on the next checkout and quietly rewrite most
+# of the source tree. `-text` turns that off so the bytes in a clone are the bytes
+# that were committed. Diffs are unaffected.
 * -text
-
-
-
