@@ -99,10 +99,13 @@ fn wired_spec_names(src: &str) -> std::collections::BTreeSet<String> {
     let mut out = std::collections::BTreeSet::new();
     for line in src.lines() {
         let t = line.trim();
-        let rest = t.strip_prefix("(\"SPEC_").or_else(|| t.strip_prefix("\"SPEC_"));
+        let rest = t.strip_prefix("(\"").or_else(|| t.strip_prefix("\""));
         if let Some(r) = rest {
             if let Some(end) = r.find('"') {
-                out.insert(r[..end].to_string());
+                let name = &r[..end];
+                if name.starts_with("SPEC_") {
+                    out.insert(name.to_string());
+                }
             }
         }
     }
