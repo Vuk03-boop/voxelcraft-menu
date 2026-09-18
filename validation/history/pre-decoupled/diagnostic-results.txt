@@ -1,0 +1,8 @@
+PASS diagnostic shader specialization 1 lane 0
+PASS diagnostic shader specialization 2 lane 0
+PASS diagnostic shader specialization 3 lane 0
+PASS diagnostic shader specialization 4 lane 0
+PASS diagnostic shader specialization 5 lane 2
+PASS diagnostic shader specialization 6 lane 2
+PASS diagnostic shader specialization 7 lane 2
+Compile-only check; colour presentation and native interaction require local testing.

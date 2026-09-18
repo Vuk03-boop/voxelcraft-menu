@@ -1,0 +1,10 @@
+Adapter: {'vendor': 'llvmpipe', 'architecture': '', 'device': 'llvmpipe (LLVM 19.1.7, 256 bits)', 'description': 'Mesa 25.0.7-2+deb13u1 (LLVM 19.1.7)', 'stackgroup_min_size': 4, 'stackgroup_max_size': 128, 'vendor_id': 65541, 'device_id': 0, 'adapter_type': 'CPU', 'backend_type': 'Vulkan'}
+PASS uniform glowstone visible but no hard/soft sun shadow; emission survives darkness; direct sun not multiplied by AO; directional sky fill
+PASS stone behind mixed glowstone remains a hard/soft blocker, including FULL-root fast-path override and 8-sample quality
+PASS opaque stone remains fully shadowed with soft shadows
+PASS exposed water side remains visible
+PASS interior water interfaces skipped without losing stone behind water
+PASS water/water chunk-boundary side is not a visible wall
+PASS uniform water material does not imply occupancy in empty cells
+LIMIT: synthetic fixtures, not confirmation of the reported shoreline in native gameplay or a performance measurement.
+PASS water sharing accepts coplanar water and rejects sky, sides, different heights and stone

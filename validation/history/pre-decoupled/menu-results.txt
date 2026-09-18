@@ -1,0 +1,11 @@
+PASS Rust syntax: 87 files (not type checking)
+PASS source guards: deferred renderer, pause before simulation, frozen clock, unified scale/TAA, headless isolation
+PASS all preference CLI aliases match the parser
+PASS title-only specialization guards
+PASS 7 untouched baseline manifest/headless/shader files byte-identical
+PASS all four lighting schedules share the authorized surface repair composition
+GPU adapter: {'vendor': 'llvmpipe', 'architecture': '', 'device': 'llvmpipe (LLVM 19.1.7, 256 bits)', 'description': 'Mesa 25.0.7-2+deb13u1 (LLVM 19.1.7)', 'stackgroup_min_size': 4, 'stackgroup_max_size': 128, 'vendor_id': 65541, 'device_id': 0, 'adapter_type': 'CPU', 'backend_type': 'Vulkan'}
+PASS production UI and blit render pipelines
+PASS UI-only clear/render/readback without HDR/history bindings
+PASS live 16-byte presentation uniform updates change output: [247, 179, 97, 255] -> [240, 202, 114, 255]
+LIMIT: Rust unit tests, native application build and real-window input/GPU allocation behavior are NOT executed here.

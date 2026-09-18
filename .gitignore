@@ -1,0 +1,33 @@
+# Build output. 3 GB and fully reproducible from Cargo.lock.
+/target/
+
+# Headless captures land wherever --screenshot is pointed; the ones the docs
+# reference live in screenshots/ and are tracked deliberately.
+/*.png
+/out.png
+
+# Revert binaries. Every batch since 8 builds one before it starts so its control
+# flag can be A/B'd against a build without the feature in it, and `--bin harness
+# bitexact --exe-b voxelcraft-preNN.exe` is what consumes them. 9 MB each, and
+# reproducible from the tree they were built from.
+/voxelcraft-pre*.exe
+
+# Edit journals. A saved world is a stream of deltas against the seed, so it is
+# reproducible from the seed plus whatever the player did -- and what the player
+# did is not something a repository has an opinion about.
+/*.journal
+
+# The fixture, copied aside so a rebuild cannot relink it mid-sweep.
+/harness-base.exe
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+# Temporary codebase dumps and helper scripts
+codebase_dump.txt
+gemini-code-*.py
+
+
+# Local fallback for windowed preferences; normal preference paths are outside the repo.
+/.voxelcraft-settings.conf

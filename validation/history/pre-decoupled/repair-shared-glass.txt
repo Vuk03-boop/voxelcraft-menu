@@ -1,0 +1,8 @@
+Adapter: {'vendor': 'llvmpipe', 'architecture': '', 'device': 'llvmpipe (LLVM 19.1.7, 256 bits)', 'description': 'Mesa 25.0.7-2+deb13u1 (LLVM 19.1.7)', 'stackgroup_min_size': 4, 'stackgroup_max_size': 128, 'vendor_id': 65541, 'device_id': 0, 'adapter_type': 'CPU', 'backend_type': 'Vulkan'}
+Compiling resolve 0 {'SPEC_WATER_SEC': True, 'SPEC_COMPACT_SHADE_HIT': True, 'SPEC_EMITTER_GATHER': False, 'SPEC_ISOLATE_GLASS': True, 'SPEC_SHADOW_PASS': False}
+Compiling resolve 1 {'SPEC_WATER_SEC': True, 'SPEC_COMPACT_SHADE_HIT': True, 'SPEC_EMITTER_GATHER': False, 'SPEC_ISOLATE_GLASS': True, 'SPEC_SHADOW_PASS': False}
+Compiling water_sec 0 {'SPEC_WATER_SEC': True, 'SPEC_COMPACT_SHADE_HIT': True, 'SPEC_EMITTER_GATHER': False, 'SPEC_ISOLATE_GLASS': True, 'SPEC_SHADOW_PASS': False}
+PASS split family resource/output comparison: {'SPEC_WATER_SEC': True, 'SPEC_COMPACT_SHADE_HIT': True, 'SPEC_EMITTER_GATHER': False} (8, 8)
+PASS split family resource/output comparison: {'SPEC_WATER_SEC': True, 'SPEC_COMPACT_SHADE_HIT': True, 'SPEC_EMITTER_GATHER': False} (17, 9)
+PASS 18 split-vs-unsplit image comparisons; max HDR channel error 0.0
+Includes odd-size resize/rebind, shared/full water, glass, foliage, sky, underwater, heatmap, disabled shadows and night. No Rust build or performance claim.
