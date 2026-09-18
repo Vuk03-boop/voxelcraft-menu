@@ -215,8 +215,11 @@ against `9 % 16`, which is identically 9 and constrains nothing.
 ### 3.4 Clippy's stated state is wrong
 
 `[verified]` `CLAUDE.md:54` says clippy is "silent since batch 22; keep it that way". 13
-instances of the `x=!y` shape that `suspicious_assignment_formatting` flags are present in
-`src/menu.rs:110-120` alone, so "silent" is not the current state. `[unverified]` the total
+instances of the `x=!y` shape that `suspicious_assignment_formatting` flags were present in
+`src/menu.rs:110-120` and, 15 in all with `tests/settings_menu.rs`. Those 15 are now written
+` = ! ` on this branch, so that lint has nothing left to report; the deliberate constructor
+and the test-shape lints remain, and the count is not re-run here because there is no
+toolchain in this environment. `[unverified]` the total
 count of 26 -- no toolchain here. `docs/ledger.md` row 101g-h claims the residue is three
 deliberate shapes, and `docs/ledger.md:136` re-lists the same three, so the drift accumulated
 after that batch rather than being miscounted in it.
@@ -370,3 +373,39 @@ than force-applied.
 run that decides whether §1.1 is fixed. Expect it to stop failing and expect no pixel change
 anywhere else; if `bitexact` moves on a vantage that has no axis-aligned ray, the guard is
 wrong and should be reverted rather than tuned.
+
+### 7b. Second pass: the lint cleanup and the settle budget
+
+**§3.3 and §3.4, applied.** All 15 `x =!y` instances -- 13 in `src/menu.rs:110-120` and 2 in
+`tests/settings_menu.rs` -- are now written ` = ! `. That is the whole of
+`suspicious_assignment_formatting`, so the lint has nothing left to report and `grep` for the
+shape across `src`, `tests` and `benches` returns zero. Whitespace only: `Setting::ShadowPass
+=>p.shadow_pass=true` is a `=!` *look-alike* that was never one and is still untouched, which
+is the point of §1.3. `CLAUDE.md:54` now says the tree is silent since this batch rather than
+carrying the old count, because a record that names a defect it just fixed is one edit away
+from being wrong again. Not done: the `field_reassign_with_default` shapes in the tests, which
+want real rewrites, and the `too_many_arguments` constructor, which is deliberately pinned.
+
+**§3.1, applied in the smaller of the two ways.** `settle()` in `tests/lod_stream.rs` and
+`tests/shadow_grid.rs` is now bounded by `Duration::from_secs(90)` of wall clock instead of
+6000 iterations, counts its own iterations, and panics with what actually happened rather than
+"world never settled". Deliberately **not** hoisted into `tests/support/`: five targets already
+`mod support;`, and a sixth that uses only part of it invites `dead_code` warnings in the
+targets that do not call every helper, which trades a broken test for a lint regression in a
+tree that keeps clippy clean on purpose. The duplication is still worth removing, but it wants a
+compile to do honestly.
+
+**Two process notes, kept because they are the transferable part.** The first pass of this
+batch broke four replacements in `README.md` and `EXPERIMENTS.md` by editing one line of
+hard-wrapped prose so that the *next* line no longer read as a sentence -- a self-contained
+replacement is not sufficient in this tree. The second found a real compile error before it
+shipped: the new panic was written `panic!("a" "b")`, and `format_args!` takes a single literal,
+so juxtaposition would not have saved it. Neither files nor tools caught either one; both were
+caught by reading the result. The repo's own convention, `tests/probe.rs` and
+`tests/batch101.rs`, is to break after the macro and keep one literal -- the panics here now
+match it.
+
+Nothing in this pass was compiled. The invariants checked instead: paren balance per touched file
+against `HEAD` (+3 open, +3 close, exactly the three new calls), brace parity, line-ending
+purity (no file became mixed), `!=` counts unchanged in both edited test files, and zero
+remaining `=!` in code.

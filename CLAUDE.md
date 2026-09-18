@@ -52,7 +52,7 @@ cargo run --release           # the game
 ```
 
 ```bash
-cargo clippy --release --all-targets     # not silent -- 13 x=!y instances in src/menu.rs alone as of docs/audit-triage.md; clear them and keep it that way
+cargo clippy --release --all-targets     # silent since the audit-triage batch cleared 15 `x =!y` instances; keep it that way, and re-run rather than quoting
 ```
 
 Headless modes need no display and are the primary way to verify changes:
