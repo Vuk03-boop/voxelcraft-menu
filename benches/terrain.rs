@@ -42,6 +42,3 @@ fn bench_build(c: &mut Criterion) {
 
 criterion_group!(benches, bench_build);
 criterion_main!(benches);
-
-
-

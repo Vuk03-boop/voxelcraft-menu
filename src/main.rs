@@ -1,10 +1,3 @@
-//! The entry point, and the dispatch to one of four modes.
-//!
-//! Batch 22b split the rest of this file into three modules, on the line of **who calls
-//! what** rather than by subject: [`scene`] is what the window and the headless modes both
-//! need, [`headless`] is the modes the measurement fixture drives, and [`app`] is the window
-//! loop. It was 1,509 lines holding all three plus this dispatch.
-
 mod app;
 mod headless;
 mod scene;
@@ -43,6 +36,3 @@ fn main() {
         Mode::Run => app::run(cfg),
     }
 }
-
-
-

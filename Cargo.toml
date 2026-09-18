@@ -2,8 +2,6 @@
 name = "voxelcraft"
 version = "0.1.0"
 edition = "2021"
-# Two binaries live here (`voxelcraft` and `probe`), so every documented
-# `cargo run --release` needs this to resolve to the game.
 default-run = "voxelcraft"
 
 [dependencies]
@@ -21,20 +19,11 @@ fastnoise-lite = "1"
 log = "0.4"
 env_logger = "0.11"
 image = { version = "0.25", default-features = false, features = ["png"] }
-# Batch 13 only, and only for `--bin shaderstats`: naga compiles the shader module to
-# SPIR-V offline with the same options wgpu-hal uses, and ash creates the compute
-# pipelines on a device with `VK_KHR_pipeline_executable_properties` enabled so the
-# driver will report registers and spills. Both versions are the ones wgpu 30 already
-# resolves to, so this adds no crate to the build -- only two direct edges to crates
-# that were transitive.
 ash = "0.38"
 naga = { version = "30", features = ["wgsl-in", "spv-out"] }
 
 [dev-dependencies]
 criterion = "0.8"
-# The *biome* field is `biome::simplex2` now, and `noise_matches_fastnoise_lite`
-# checks it against this crate. The crate is still a normal dependency as well:
-# `worldgen.rs` uses it for the height and cave noise.
 fastnoise-lite = "1"
 
 [[bench]]

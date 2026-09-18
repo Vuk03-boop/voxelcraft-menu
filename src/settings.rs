@@ -1,5 +1,3 @@
-//! Windowed preferences only. World recipes and headless configuration never read this file.
-//! No new dependencies; deliberately small, strict, versioned key=value format.
 use crate::config::Config;
 use std::collections::BTreeSet;
 use std::io::{Read, Write};
@@ -40,7 +38,6 @@ impl Default for Preferences {
     fn default() -> Self { Self::from_config(&Config::default()) }
 }
 
-/// Additive effects. Experimental specialization changes are title-only; no world recipe is changed.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ApplyPlan {
     pub resize: bool,
@@ -57,7 +54,7 @@ impl Preferences {
             aces: c.tone_map_aces, grade: if c.grade_cine { Grade::Cine } else if c.grade_warm { Grade::Warm } else { Grade::None },
             grade_strength: c.grade_strength, fog_density: c.fog.density, ambient: c.ambient, compact_shade_hit: c.compact_shade_hit, isolate_glass: c.isolate_glass, shadow_pass: true, glass_reflect: c.glass_reflect, water_look: c.water_look, wind_sway: c.wind_sway, soft_shadows: c.soft_shadows }
     }
-    /// Used by Restore Defaults in an active session, where shader switches are locked.
+
     pub fn keep_experiments_from(&mut self, other: &Self) {
         self.compact_shade_hit = other.compact_shade_hit;
         self.isolate_glass = other.isolate_glass;
@@ -102,8 +99,7 @@ impl Preferences {
                 || self.ao != next.ao || self.reflections != next.reflections || self.refraction != next.refraction
                 || self.fog_density != next.fog_density || self.ambient != next.ambient }
     }
-    /// Explicit CLI options win even when their value equals a default. Never use
-    /// 'different from default' as an approximation for whether the user supplied it.
+
     pub fn overlay_cli(&mut self, parsed: &Config, args: &[String]) {
         let c = Self::from_config(parsed);
         for arg in args {
@@ -184,15 +180,14 @@ pub fn load(path: &Path) -> Result<Option<Preferences>, String> {
         Ok(m) if m.len() > 65536 => return Err("Settings file too large".into()),
         Ok(_) => {}
     }
-    // Bound the actual read too, in case the file grows after metadata was read.
+
     let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
     let mut text = String::new();
     file.take(65537).read_to_string(&mut text).map_err(|e| e.to_string())?;
     if text.len() > 65536 { return Err("Settings file too large".into()); }
     Preferences::decode(&text).map(Some)
 }
-/// Write a sibling temporary file, sync it, then rename. Failure keeps the old
-/// file; do not truncate preferences in-place. Platform rename failures are surfaced.
+
 pub fn save(path: &Path, prefs: &Preferences) -> Result<(), String> {
     prefs.validate()?;
     let parent = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));

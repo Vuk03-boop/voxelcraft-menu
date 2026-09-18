@@ -1,6 +1,3 @@
-// Phase 1/2 screen-space penumbra reconstruction. Not a multi-ray area-light estimate.
-// R16F is receiver-to-blocker separation ALONG THE SUN RAY, not camera depth subtraction.
-// Zero denotes a miss/nonreceiver. A true contact hit is clamped to a positive half-float.
 @group(3) @binding(1) var shadow_dist_tex: texture_storage_2d<r16float, write>;
 @group(3) @binding(2) var shadow_dist_sample: texture_2d<f32>;
 @group(3) @binding(3) var shadow_h_tex: texture_storage_2d<rg16float, write>;
@@ -42,7 +39,7 @@ fn primary_shadow(@builtin(global_invocation_id) gid:vec3<u32>) {
     if shadow_active() {
         let g=shadow_guide(p);
         if g.valid {
-            // EXACTLY ONE geometric shadow query for an eligible receiver.
+
             let blocker=shadow_ray_t(g.hit+g.n*(0.02*g.scale),frame.sun_dir,frame.shadow_dist);
             if blocker>=0.0 { distance=clamp(blocker,0.001,65504.0); }
         }
@@ -52,12 +49,12 @@ fn primary_shadow(@builtin(global_invocation_id) gid:vec3<u32>) {
 fn shadow_radius(distance:f32,depth:f32)->f32 {
     let proj=f32(frame.res.y)/(2.0*max(frame.tan_half_fov,0.001));
     let r=distance*SUN_ANGLE*SOFT_PENUMBRA*proj/max(depth,0.01);
-    // Subpixel/contact shadows stay sharp. Bound the screen-space cost explicitly.
+
     return select(0.0,min(r,f32(SHADOW_RADIUS_LIMIT)),r>=0.5);
 }
 fn shadow_compatible(a:ShadowGuide,b:ShadowGuide)->bool {
     if !b.valid || dot(a.n,b.n)<0.95 { return false; }
-    // Plane depth, not |camera depth|: a sloped coplanar receiver must remain continuous.
+
     let tolerance=max(0.01,0.01*min(a.scale,b.scale));
     return abs(dot(b.hit-a.hit,a.n))<=tolerance && abs(dot(b.hit-a.hit,b.n))<=tolerance;
 }
@@ -80,7 +77,7 @@ fn shadow_horizontal(@builtin(global_invocation_id) gid:vec3<u32>) {
                 if !shadow_compatible(center,guide) { continue; }
                 let nd=textureLoad(shadow_dist_sample,q,0).x;
                 let r=max(rc,shadow_radius(nd,guide.t));
-                // Neighbour support lets a penumbra grow onto LIT receivers too.
+
                 if r<abs(f32(k)) { continue; }
                 let w=exp(-2.0*f32(k*k)/max(r*r,0.25));
                 sum+=select(0.0,1.0,nd>0.0)*w; weight+=w; support=max(support,r);
@@ -114,6 +111,6 @@ fn shadow_vertical(@builtin(global_invocation_id) gid:vec3<u32>) {
             occ=sum/weight;
         }
     }
-    // This is visibility (1=lit), sampled once by cached primary shading.
+
     textureStore(shadow_mask_tex,p,vec4<f32>(clamp(1.0-occ,0.0,1.0),0.0,0.0,1.0));
 }

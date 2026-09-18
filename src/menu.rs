@@ -1,5 +1,3 @@
-//! Menu state/layout shared by hit testing, keyboard navigation and drawing.
-//! Draft edits never mutate applied preferences until the application commits Apply.
 use crate::render::ui::UiRenderer;
 use crate::settings::{Grade, Preferences};
 use winit::keyboard::KeyCode;
@@ -189,14 +187,13 @@ impl Menu {
             let tw=item.label.len() as f32*4.0*scale;
             text(ui,x+(w-tw)*0.5,y+16.0,scale,&item.label,if selected {pale}else{muted});
         }
-        // Keep status bounded; full I/O errors are also printed by the app.
+
         let status:String=self.status.chars().map(|c| if c.is_ascii() {c} else {'?'}).take(95).collect();
         text(ui,100.0,650.0,1.8,&status,gold);
         text(ui,100.0,678.0,1.5,"MOUSE OR ARROW KEYS / ENTER SELECTS / ESC GOES BACK",muted);
     }
 }
 
-/// Draw only UI, without binding an uninitialized HDR/history texture.
 pub fn present_ui(gpu:&crate::render::Gpu,ui:&mut UiRenderer,target:&wgpu::TextureView,size:(u32,u32)) {
     let mut enc=gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor{label:Some("menu")});
     {

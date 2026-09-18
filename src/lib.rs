@@ -18,7 +18,5 @@ pub mod textures;
 pub mod voxel;
 pub mod worldgen;
 
-
-
 pub mod settings;
 pub mod menu;

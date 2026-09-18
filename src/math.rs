@@ -1,5 +1,3 @@
-//! Coordinate helpers. Internal world Y runs 0..512; displayed Y is internal - 64.
-
 use glam::{IVec3, Mat4, Vec3, Vec4};
 
 pub const WORLD_HEIGHT: i32 = 512;
@@ -12,7 +10,6 @@ pub fn block_of(p: Vec3) -> IVec3 {
     p.floor().as_ivec3()
 }
 
-/// Axis-aligned box in world block units.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Aabb {
     pub min: Vec3,
@@ -34,20 +31,13 @@ impl Aabb {
     pub fn center(&self) -> Vec3 {
         (self.min + self.max) * 0.5
     }
-    /// Distance from a point to the closest point of the box (0 if inside).
+
     pub fn distance_to(&self, p: Vec3) -> f32 {
         let d = (self.min - p).max(p - self.max).max(Vec3::ZERO);
         d.length()
     }
 }
 
-/// World -> clip matrix for the camera `ray_dir` builds its rays from, so it is that
-/// mapping's exact inverse: the hit reconstructed for pixel (x, y) projects back to (x, y).
-/// Built from the basis vectors rather than from a look-at so it cannot drift from them.
-/// Clip z follows wgpu's convention (0 at near, 1 at far); nothing samples it yet.
-// Eight arguments, and they are eight independent quantities: a camera basis is four vectors
-// and a projection is four scalars. Bundling them into a struct would add a type whose only
-// job is to be unpacked here.
 #[allow(clippy::too_many_arguments)]
 pub fn view_proj(
     pos: Vec3,
@@ -59,7 +49,7 @@ pub fn view_proj(
     near: f32,
     far: f32,
 ) -> Mat4 {
-    // View space is x right, y up, looking down -z -- the basis the ray directions spell out.
+
     let view = Mat4::from_cols(
         Vec4::new(right.x, up.x, -fwd.x, 0.0),
         Vec4::new(right.y, up.y, -fwd.y, 0.0),
@@ -76,7 +66,6 @@ pub fn view_proj(
     proj * view
 }
 
-/// View frustum as 6 inward-facing planes (normal, distance): inside when dot(n, p) + d >= 0.
 pub struct Frustum {
     pub planes: [(Vec3, f32); 6],
 }
@@ -97,7 +86,7 @@ impl Frustum {
             let n = n.normalize();
             (n, -n.dot(pos))
         };
-        // Side planes pass through the camera position.
+
         let left = mk(fwd * hx + right);
         let rightp = mk(fwd * hx - right);
         let bottom = mk(fwd * hy + up);
@@ -127,12 +116,6 @@ impl Frustum {
     }
 }
 
-/// Sub-pixel sample positions for the temporal accumulator: Halton(2, 3), eight phases,
-/// centred on the pixel so the mean offset is near zero.
-///
-/// The sequence starts at Halton's *first* term, not its zeroth. The zeroth is (0, 0),
-/// which would spend one frame in eight on the plain grid and leave that phase carrying no
-/// new information at all.
 pub const TAA_PHASES: u64 = 8;
 
 pub fn halton_jitter(index: u64) -> glam::Vec2 {
@@ -149,6 +132,3 @@ fn halton(mut i: u32, base: u32) -> f32 {
     }
     r
 }
-
-
-

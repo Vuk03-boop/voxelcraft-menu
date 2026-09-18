@@ -1,7 +1,3 @@
-// These tests hold **transliterations** of formulations in `src/`, on purpose: the point of
-// the copy is that it reads the same as the original, so a divergence is visible. Clippy's
-// modernisations here would silently make the two halves of each mirror look different, which
-// costs exactly the thing the duplication buys.
 #![allow(clippy::int_plus_one)]
 #![allow(clippy::manual_is_multiple_of)]
 #![allow(clippy::manual_range_contains)]
@@ -41,11 +37,6 @@ fn terrain(x: u32, y: u32, z: u32, seed: u32) -> BlockId {
     }
 }
 
-/// Regression: a new leaf in an L1 cell that did not exist yet was inserted at index 0 of
-/// the chunk's attribute table instead of at its true prefix, silently rewriting an
-/// unrelated block elsewhere in the chunk. An absent L1 node carries `leaf_prefix == 0`,
-/// so the insertion point has to be derived from the sibling counts, not from the node.
-/// This walks the whole chunk after every edit, which is how the corruption was found.
 #[test]
 fn edits_never_corrupt_unrelated_blocks() {
     let mut dense = vec![AIR; VOL];
@@ -82,7 +73,7 @@ fn edits_never_corrupt_unrelated_blocks() {
                 attr_before, rec.attr, rec.root, rec.leaf_count, rec.solid_count
             );
         }
-        // Also check a full mirror every step for the first few hundred.
+
         if i < 400 {
             for yy in 0..64u32 {
                 for zz in 0..64u32 {
@@ -98,6 +89,3 @@ fn edits_never_corrupt_unrelated_blocks() {
         }
     }
 }
-
-
-

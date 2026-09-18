@@ -1,4 +1,3 @@
-//! Surface-repair contracts. GPU traversal/readback checks live in validation/check_surface.py.
 mod support;
 use voxelcraft::{block, config, light};
 use voxelcraft::voxel::{VOL, tree::{dense_index,cell_bit}};

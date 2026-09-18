@@ -37,6 +37,3 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     let a = textureSample(font_tex, font_samp, in.uv).r;
     return vec4<f32>(in.color.rgb, in.color.a * a);
 }
-
-
-

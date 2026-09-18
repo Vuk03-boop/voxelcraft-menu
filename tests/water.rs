@@ -1,6 +1,3 @@
-//! Water invariants: the basins flood, `--no-water` leaves the identical terrain dry,
-//! coarse levels cover the same area of sea, and sky light dims with depth.
-
 mod support;
 use glam::IVec3;
 use voxelcraft::block::*;
@@ -16,8 +13,6 @@ fn gen_chunk(gen: &WorldGen, key: ChunkKey) -> Vec<BlockId> {
     dense
 }
 
-/// The chunk spanning internal Y 64..128 holds every water voxel there is, since water
-/// only ever sits between a column's height and the sea surface.
 const SEA_SLAB: i32 = 1;
 
 #[test]
@@ -50,9 +45,7 @@ fn basins_flood_to_sea_level() {
                     );
                 }
             }
-            // A submerged floor is sand, not grass: it is a sea bed, and the tide line is
-            // what the shore rule keys on. A cave mouth can open right under it, which is
-            // the only other thing the top block is allowed to be.
+
             let ly = h - o.y;
             if ly >= 1 {
                 let floor = dense[dense_index(x, ly as usize - 1, z)];
@@ -74,8 +67,6 @@ fn basins_flood_to_sea_level() {
     );
 }
 
-/// `--no-water` has to be a control and nothing more: the same heightfield, the same block
-/// underneath, with air wherever the water was. Every measurement in batch 8 leans on that.
 #[test]
 fn no_water_leaves_the_identical_terrain_dry() {
     let wet = WorldGen::new(1337);
@@ -94,8 +85,6 @@ fn no_water_leaves_the_identical_terrain_dry() {
     }
 }
 
-/// The same test the canopy proxies get: a coarse level has to cover the same fraction of
-/// the world in sea as LOD 0 does, or a shoreline would walk in and out as it refines.
 #[test]
 fn coarse_water_area_matches_lod0() {
     let gen = WorldGen::new(1337);
@@ -164,9 +153,6 @@ fn probe(d: &LightData, x: usize, y: usize, z: usize) -> u16 {
     (d.bricks[entry as usize][vb >> 1] >> ((vb & 1) * 16)) as u16
 }
 
-/// Sky light loses one level per block of water and none per block of air, which is what
-/// makes a sea floor darken with depth. Water does *not* stop the flood, so the light
-/// still reaches sideways under a ledge.
 #[test]
 fn sky_light_dims_with_depth_through_water() {
     const FLOOR: usize = 20;
@@ -184,7 +170,6 @@ fn sky_light_dims_with_depth_through_water() {
     }
     let data = light::compute(&dense, &vec![true; 64 * 64]);
 
-    // Air above the surface keeps full sky.
     for y in SURFACE..64 {
         assert_eq!(
             light::sky_of(probe(&data, 32, y, 32)),
@@ -192,7 +177,7 @@ fn sky_light_dims_with_depth_through_water() {
             "air at y={y} should be full sky"
         );
     }
-    // One level per block of water, top-down.
+
     for d in 0..(SURFACE - FLOOR) {
         let y = SURFACE - 1 - d;
         let want = 15u8.saturating_sub(d as u8);
@@ -202,23 +187,16 @@ fn sky_light_dims_with_depth_through_water() {
             "water at depth {d} (y={y}) should be sky {want}"
         );
     }
-    // The floor sits 20 blocks down, past where the pour has run out.
+
     assert_eq!(
         light::sky_of(probe(&data, 32, FLOOR, 32)),
         0,
         "20 blocks down should be dark"
     );
-    // And a shallower bottom is still lit: 4 blocks of water keeps most of it.
+
     assert!(light::sky_of(probe(&data, 32, SURFACE - 5, 32)) >= 11);
 }
 
-// ------------------------------------------------------- batch 41: the shadow budget under water
-
-/// Strip line comments, so a test cannot pass or fail on its own subject's documentation.
-///
-/// Joined with a space rather than a newline because every assertion below is a `contains`
-/// over a single call, and a call that the formatter has wrapped is easier to match with the
-/// newlines gone than with them kept.
 fn code_only(src: &str) -> String {
     src.lines()
         .map(|l| l.split("//").next().unwrap_or(""))
@@ -226,12 +204,6 @@ fn code_only(src: &str) -> String {
         .join(" ")
 }
 
-/// The budget is one number written in two files, and this is the only thing tying them.
-///
-/// `render::WATER_SHADOW_DIST` is what `make_spec` hands the pipeline; the `override` in
-/// `common.wgsl` is what a reader of the shader sees, and what any pipeline built without the
-/// constants list would get. They have to agree or the file lies about the shipping build --
-/// the same arrangement `water_body_matches_the_atlas_layer` makes for the medium's colour.
 #[test]
 fn the_water_shadow_budget_agrees_with_the_shader() {
     let src = render::shader_source();
@@ -250,24 +222,13 @@ fn the_water_shadow_budget_agrees_with_the_shader() {
         render::WATER_SHADOW_DIST,
         "the shader's default budget and the one `make_spec` passes disagree"
     );
-    // The `const` this replaced was read by name from `resolve.wgsl` for thirty-three
-    // batches. A stale copy left behind would compile and would quietly be the number the
-    // refraction leg used.
+
     assert!(
         !src.contains("const WATER_SHADOW_DIST"),
         "a second copy of the budget is still in the module"
     );
 }
 
-/// Truncating the march moves the handoff; it does not delete the shadow.
-///
-/// **This is the whole reason 48 -> 16 costs a max channel delta of 1 rather than a missing
-/// shadow**, and it is a property of batch 37's code rather than of batch 41's: `shade_hit`
-/// marches `shadow_ray` to `shadow_dist` and then hands `terrain_shade_beyond` *the same
-/// distance*, so the two partition `[0, d)` and `[d, reach)` with no gap and nothing counted
-/// twice -- see the algebra at `terrain_shade_beyond`. Pass a different number to either and
-/// the partition opens a gap or double-counts, and the measurement that chose 16 stops
-/// holding, with nothing in the frame to say so at the vantages this fixture has.
 #[test]
 fn the_envelope_resumes_where_the_water_shadow_march_stops() {
     let src = render::shader_source();
@@ -286,12 +247,6 @@ fn the_envelope_resumes_where_the_water_shadow_march_stops() {
     }
 }
 
-/// The refracted ray is the budget's only reader, which is what `IMPLIES` claims from a render.
-///
-/// The two readings are worth having together for the reason `lessons.md` gives: the
-/// composition check says a build tracing no refraction cannot see the control, and this says
-/// why -- there is one call site. A second one would make that `Nothing` a coincidence of the
-/// vantages rather than a fact about the code.
 #[test]
 fn the_water_shadow_budget_has_one_reader() {
     let src = render::shader_source();
@@ -302,9 +257,7 @@ fn the_water_shadow_budget_has_one_reader() {
         "SPEC_WATER_SHADOW_DIST should appear exactly twice in the module -- its `override` \
          and the one `shade_hit` call under the refraction -- and it appears {uses} times"
     );
-    // Batch 81 (P12) moved the traces *with* the legs into functions, so the reader is
-    // where the refraction is. Same invariant, re-pointed: exactly one `shade_hit` in the
-    // module passes this budget, and the reflect leg is not it.
+
     let at = src.find("fn water_refract_leg(").expect("water_refract_leg exists");
     let body = &src[at..];
     let end = body.find("\nfn ").expect("another function follows water_refract_leg");
@@ -317,8 +270,7 @@ fn the_water_shadow_budget_has_one_reader() {
     let body = &src[at..];
     let end = body.find("\nfn ").expect("another function follows water_reflect_leg");
     let code = code_only(&body[..end]);
-    // The reflected leg shades through air and takes the frame's own 220. If it ever
-    // took this one, `--no-water-shadow-cut` would silently become a reflection control.
+
     assert!(
         code.contains("mirror_t, t + h3.t,"),
         "the reflected leg's shade_hit call has moved; check which budget it now passes"
@@ -328,6 +280,3 @@ fn the_water_shadow_budget_has_one_reader() {
         "the budget grew a second reader, in the reflect leg"
     );
 }
-
-
-

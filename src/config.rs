@@ -1,5 +1,3 @@
-//! Runtime configuration and command-line parsing.
-
 use crate::lod::LodConfig;
 use crate::render::{Clouds, Fog, GodRays, SkyLook};
 use std::path::Path;
@@ -7,581 +5,224 @@ use std::path::Path;
 #[derive(Clone, Debug)]
 pub struct Config {
     pub seed: i32,
-    /// Water fills every column from its terrain height up to here, in **internal** world
-    /// Y. `--no-water` sets it to zero: the identical terrain with no water in it, which
-    /// is the control for everything in batch 8.
+
     pub sea_level: i32,
-    /// Multiplier on water's per-channel extinction. 1.0 is the tuned value; 0 is
-    /// perfectly clear water, which is the A/B partner for every claim about depth colour.
+
     pub water_absorb: f32,
-    /// Amplitude of the water layer's per-block mottling. **Ships at 0.0 since batch 26**;
-    /// `--water-mottle 0.2` is the control and reproduces the pre-batch-26 build bit for bit.
-    /// **Not a correction of batch 21b, which chose 0.2 on purpose.** 21b built this
-    /// flattening as its candidate fix and measured it moving **0 pixels at fourteen
-    /// vantages** -- the null that proved the sea was reading the *glass* layer and broke
-    /// that batch open. Having disproved it as the fix, 21b put the default back and left
-    /// flattening in the roadmap as batch 21a's free half-measure. What it did not retract
-    /// were three artifacts of the abandoned fix claiming 0.0 already shipped. Batch 26 took
-    /// the lever on its own measurements. It stays a flag because it is the knob that says
-    /// how much of the sea's texture is the mottle: an atlas constant and not a shader one,
-    /// so it costs the frame nothing at any value.
+
     pub water_mottle: f32,
-    /// Trace a reflection ray off the water surface. Off leaves the Fresnel weight on the
-    /// sky alone.
+
     pub water_reflect: bool,
-    /// Trace the refracted ray for what is under the surface. Off leaves the fully
-    /// absorbed body colour, which is the documented opaque approximation.
+
     pub water_refract: bool,
-    /// Roadmap A3, land half: wet-darkened sand within `WET_BAND` of the waterline
-    /// (batch 75). Default on; `--no-shore-wet` reverts the band exactly.
+
     pub shore_wet: bool,
-    /// Roadmap A3, water half: animated foam over the shallow column the traced
-    /// refraction already measured (batch 75). `--no-shore-foam` reverts it.
+
     pub shore_foam: bool,
-    /// Batch 81, roadmap P12's diagnostic arm: trace the two secondary water legs once
-    /// per 2x2 block and let the owner's pixels read them. Deliberately dumb -- the
-    /// `--reference` MAE at the three water vantages decides what the guided pass owes.
+
     pub water_sec: bool,
-    /// Batch 81c: **which** NxN the legs are traced for. The diagnostic measured P12 gone
-    /// at scale 2; the dumb upsampling is what the fraction sweep holds constant while
-    /// 1/2/4 prices resolution against picture, which is the sweep the entry asks for.
+
     pub water_sec_scale: u32,
-    /// A10's retuning batch, presentation side: which filmic shoulder the blit rolls the
-    /// traced HDR onto. `knee` ships -- it is the hyperbola every exposure and brightness
-    /// constant in the engine was tuned against. `aces` is Narkowicz's 2015 fit, a *curve
-    /// arm* per the entry's prescription: one knob moved, all else held, so the by-eye
-    /// pass reads what a different shoulder does to the picture and nothing else. AgX
-    /// (the hue-preserving, per-channel-matrix prescription) is the follow-up this arm's
-    /// reading is meant to decide, not part of it.
+
     pub tone_map_aces: bool,
-    /// Batch 97a's cool midday sky (`--sky-cool`): the gradient and deck constants swap
-    /// toward the reference frames' cornflower -- off is the pre-97 sky bit for bit.
+
     pub sky_cool: bool,
-    /// G1's warm grade (`--grade warm`, batch 95): the presentation cast chosen by eye
-    /// against the two reference frames in `docs/look-reference-*.png`. Luma-preserving by
-    /// construction, so it cannot re-tune a lighting constant; default off, so the control
-    /// is the bit-exact pre-95 frame.
+
     pub grade_warm: bool,
-    /// Batch 97b's filmic print (`--grade cine`): blit selector value 2 -- S-curve value,
-    /// desaturated mids, cool shadows against warm highlights, all on the luma pivot, so
-    /// the same luma law as the warm cast holds for it.
+
     pub grade_cine: bool,
-    /// Batch 101's strength dial (`--grade-strength f`): the second round's verdict was
-    /// that cine works at sunset but crushes an already-dark midday hillside -- this is
-    /// the dial between those two readings, lerping the graded pixel back toward the
-    /// pre-grade pixel. Default 1.0 keeps the batch-97 grade exact (mix at 1.0 returns
-    /// its second argument bit-for-bit), and the dial ends the debates-specific case:
-    /// one flag, applied after both grade casts, no selector change.
+
     pub grade_strength: f32,
-    /// Batch 97c's water look (`--water-look`): animated metre-scale ripples on the
-    /// sky-facing normal, murk absorption growing with the traced column, sunlit
-    /// turquoise at the bank. Default off -- the unflagged sea is the control.
+
     pub water_look: bool,
-    /// Batch 97d's ground-cover richness (`--foliage-rich`): per-voxel hashed species
-    /// variety on tufts and grass/meadow tops -- straw stands, value jitter, a rare
-    /// flower. Shader-side albedo only; worldgen geometry never moves.
+
     pub foliage_rich: bool,
-    /// Batch 97e's canopy grain (`--canopy-relief`): clump-scale brightness relief and
-    /// sun-facing modulation on leaves. Same default-off law, same albedo argument.
+
     pub canopy_relief: bool,
-    /// A9 (`--caustics`): woven sun sheets on the flooded floor, read off the wave
-    /// field's own first two octaves at the sun-projected waterline point. Default off --
-    /// every open roadmap look entry builds dark until the by-eye pass verdict, so a flag
-    /// not given renders the shipping frame bit-exactly.
+
     pub caustics: bool,
-    /// A4 (`--glass-reflect`): trace a pane reflection with one real march instead of
-    /// assuming a sky. Same default-off law: the arm costs one `water_reflect_leg` per
-    /// glass pixel when on, nothing when off, and the verdict belongs to the eyes.
+
     pub glass_reflect: bool,
-    /// A1 (`--canopy-lift <blocks>`): raise the shaft field's height read inside
-    /// tree-holding columns by this many blocks, hiding the canopy the coarse fill saw
-    /// through. Pure data: the field rebuilds on the same dirty path, no shader moves.
+
     pub canopy_lift: f32,
-    /// A5 (`--tree-blue-noise`): thin the coarse canopy proxies to LOD 0's transmittance
-    /// with a blue-noise rank field instead of stamping them solid, closing the cross-fade
-    /// partition the LOD cliff comes from. Generator-side only; default off.
+
     pub tree_blue_noise: bool,
-    /// A8 piece 4 (`--meadow-side`): `MEADOW_SIDE` at the coarse repaint instead of
-    /// `MEADOW`. Worldgen-content class, same as A5 -- no pipeline, no flag bit.
+
     pub meadow_side: bool,
-    /// G2 (`--grass-dense`): dense two-height tufts at LOD 0, blue-noise tuft proxies on
-    /// the coarse shell, reeds around the wet banks; two new foliage ids (`GRASS_TALL`,
-    /// `REEDS`) ride the tuft's `is_tuft` contract. Worldgen-content class, same as A5;
-    /// default off, and the unarmed world is bit-identical by construction.
+
     pub grass_dense: bool,
-    /// G2 (`--wind-sway`): the cross-quad planes lean with a two-sine traveling gust
-    /// field, so the references' grass *moves*. Render-side spec bit, default off;
-    /// counting as a G1 look-arm because it is one, but it was always destined to be
-    /// judged on G2's geometry.
+
     pub wind_sway: bool,
-    /// Sun disc (`--soft-shadows`): penumbra -- three cone taps around the centre
-    /// shadow tap soften the edge the one-bit `shadow_ray` leaves razor-hard, with the
-    /// tap budget scaled by blocker distance so contact stays hard and only the fringe
-    /// pays. Render-side spec bit, default off; batch 102a.
+
     pub soft_shadows: bool,
-    /// Opt-in material-after-lighting schedule; requires GPU A/B measurement.
+
     pub compact_shade_hit: bool,
-    /// Opt-in architecture prototypes, configured before Play.
+
     pub isolate_glass: bool,
     pub shadow_pass: bool,
     pub legacy_lighting: bool,
     pub legacy_water: bool,
     pub soft_shadow_hq: bool,
-    /// Diagnostic: 0 off, 1 normals, 2 visibility, 3 direct, 4 indirect, 5 water faces, 6 reflection, 7 refraction.
+
     pub surface_debug: u32,
-    /// 0 default, 1 narrow, 2 wide. CLI-only startup specialization.
+
     pub sun_softness: u32,
-    /// A2c (`--snell-bend`): inside Snell's window, trace the world the ray actually
-    /// finds -- two segments at dispatch, the transmitted half refracted at the sea
-    /// plane. Default off; `resolve` is untouched by construction.
+
     pub snell_bend: bool,
-    /// A8 (`--shaft-texel <blocks>`): the envelope's quantisation. Shipped at 4 and never
-    /// swept; finer is a sharper shadow edge AND a shorter window (the field is 512 texels a
-    /// side either way), which is the trade `--reference` exists to read.
+
     pub shaft_texel: i32,
-    /// A8 (`--tint-balance`): the balanced tint table and its atlas masks. Two of the six
-    /// biomes' surfaces carry alpha-0 layers (desert's sand, tundra's lichen) and a third's
-    /// multiplier is identity by construction (plains), so batch 12's ground tint reaches
-    /// half the palette. Off like the rest of the batch-90 family: the by-eye pass sets it.
+
     pub tint_balance: bool,
-    /// The biome field. `--no-biomes` collapses it to one entry -- plains everywhere, no
-    /// snow line, no tree line, mountain amplitude 88 -- which is the pre-batch-9 world
-    /// bit for bit, and the control for everything in batch 9.
+
     pub biomes: bool,
-    /// Batch 14's ground cover. `--no-foliage` places none, which is the pre-batch-14 world
-    /// bit for bit and the control for everything in batch 14.
-    ///
-    /// `--no-biomes` clears it too, for the same reason it clears the tint: that flag has to
-    /// reproduce a build from before the biome field existed, and ground cover is scaled by a
-    /// per-biome field. `WorldGen::with_options` is where the two are ANDed.
+
     pub foliage: bool,
-    /// Batch 18's coarse meadow. `--no-meadow` paints none, which is the pre-batch-18 world
-    /// bit for bit -- and unlike every control since batch 11 it is free by construction
-    /// rather than by measurement, because the batch adds no shader code at all.
-    ///
-    /// ANDed with `foliage` in `WorldGen::with_options`: a world with no ground cover has
-    /// no LOD 0 boundary for a meadow to hide.
+
     pub meadow: bool,
-    /// Batch 60, roadmap R3. The probe bake weights each ground sample it gathers by the sky
-    /// that sample can see, so ground in a ravine bounces less than the same ground in the
-    /// open. `--no-probe-shadow` clears it and the bake produces batch 58's field exactly.
-    ///
-    /// **Free, and free by construction rather than by measurement**: the term is a multiply
-    /// by a number that is 1.0 over flat ground, computed from height samples the horizon
-    /// march has already taken, and it is paid in `stream::build` on the rayon workers rather
-    /// than anywhere the frame can see.
+
     pub bounce_shadow: bool,
-    /// Tint vegetation by the biome under it. `--no-tint` switches it off and is the
-    /// control for everything in batch 12: the shader returns the atlas albedo untouched
-    /// before the biome field is ever sampled, so the frame is the pre-batch-12 one bit for
-    /// bit and costs what it cost then.
-    ///
-    /// `--no-biomes` clears it too. That flag's job is to reproduce a build from before the
-    /// biome field existed, and a tint derived from that field is part of what it has to
-    /// take away -- which is also what keeps it a whole-frame control and not just a
-    /// worldgen one.
+
     pub tint: bool,
-    /// How far the tint is taken, 0..1. A look knob, **not** the control -- zero still pays
-    /// for the biome field on every tinted pixel.
+
     pub tint_strength: f32,
-    /// Peak slope of the water micro-normals, dimensionless (batch 16). 0 is exactly the
-    /// batch-8 sheet of glass, and unlike `tint_strength` it really **is** the control:
-    /// `flags_from` clears `FLAG_WAVES` with it, so the field leaves `resolve` altogether
-    /// rather than evaluating to nothing.
+
     pub wave_amp: f32,
-    /// Blocks per period of the base wave octave; the other three are harmonics of it.
+
     pub wave_scale: f32,
-    /// Periods per second the wave phases advance. It multiplies `frame.time`, which every
-    /// headless mode pins to zero, so this changes the game and never a capture.
+
     pub wave_speed: f32,
-    /// Largest slope the *traced* reflection's normal may take, as a tangent. Zero by
-    /// measurement -- see `render::Waves::reflect_slope`. `--wave-clamp 0.02` is the A/B
-    /// partner that shows why.
+
     pub wave_reflect_slope: f32,
-    /// Whether the wave band limit reads the grazing angle (batch 19). `false` is
-    /// `--no-wave-aniso`, the pre-batch-19 isotropic footprint, and it is the control: the
-    /// field is filtered against the pixel's width across the view ray rather than against
-    /// the much longer footprint the ray actually covers on a near-horizontal sea.
+
     pub wave_aniso: bool,
-    /// Whether the wave amplitude ramps with water depth (batch 20). `false` is
-    /// `--no-wave-shoal`, the pre-batch-20 sea, which gives a two-block lagoon the same swell
-    /// as open ocean. Keyed to *depth* and never to camera distance -- see
-    /// `render::FLAG_WAVE_SHOAL` for why that distinction is the whole design.
+
     pub wave_shoal: bool,
-    /// Eight wave octaves subdividing the shipped band instead of four (batch 25).
-    /// `--no-wave-fill` is the control and reproduces the pre-batch-25 sea bit for bit; see
-    /// `render::FLAG_WAVE_FILL` for why the count is not the variable the name suggests.
+
     pub wave_fill: bool,
-    /// Terrain-cast crepuscular rays (batch 35). `--no-terrain-shafts` is the control; being
-    /// in `render::SPEC_MASK` it is free. **It is not a pre-batch-35 revert on its own since
-    /// batch 37** -- pair it with `--no-distant-shadows`, the envelope's other reader. See
-    /// `render::FLAG_TERRAIN_SHAFTS` for that and for what it changes about the two cloud
-    /// controls, which is the half a bench here has to know.
+
     pub terrain_shafts: bool,
-    /// Per-block texture permutation (batch 36). `--no-tex-variation` is the control and
-    /// reproduces the pre-batch-36 frame bit for bit; being in `render::SPEC_MASK` it does
-    /// so for free. Which layers may turn at all is `block::PERM_CLASS`, not this flag --
-    /// this only decides whether the class is consulted.
+
     pub tex_variation: bool,
-    /// Leaf cutouts (batch 38). `--no-leaf-cutout` is the control and reproduces the
-    /// pre-batch-38 frame bit for bit; being in `render::SPEC_MASK` it does so for free.
-    /// *Which* blocks are carved is `BlockDef::cutout` and not this flag -- this only decides
-    /// whether the marcher looks.
+
     pub leaf_cutout: bool,
-    /// Flat lighting for hits reached through water or glass (batch 45).
-    /// `--no-flat-secondary` is the control and reproduces the pre-batch-45 frame bit for
-    /// bit -- see `render::FLAG_FLAT_SECONDARY`.
+
     pub flat_secondary: bool,
-    /// The submerged reach cut (batch 48). `--no-water-far` is the control and reproduces the
-    /// pre-batch-48 frame bit for bit -- see `render::FLAG_WATER_FAR`.
-    ///
-    /// Nothing above water reads it: the flag it sets is ANDed with `FLAG_UNDERWATER`, so a
-    /// run that never submerges cannot tell this from the control.
+
     pub water_far: bool,
-    /// The dark-water rung of that cut (batch 53). `--no-water-dark` is the control and
-    /// reproduces the pre-batch-53 frame bit for bit -- see `render::FLAG_WATER_DARK`.
-    ///
-    /// Nothing above water reads it either, and nothing *shallow* does: the tile has to still
-    /// be under the sky flood's reach at `WATER_FAR_DIST`, which needs a camera far enough
-    /// down or aimed far enough down for that to be true.
+
     pub water_dark: bool,
-    /// Total internal reflection at the water surface, seen from below (batch 54).
-    /// `--no-snell` is the control and reproduces the pre-batch-54 frame bit for bit -- see
-    /// `render::FLAG_SNELL`.
-    ///
-    /// Nothing above water reads it: the term is only reached with `FLAG_UNDERWATER` set.
+
     pub snell: bool,
-    /// Batch 55's probe tap: one hardware trilinear tap into the probe field, taken once per
-    /// shaded surface and shading nothing. `--probe-tap` switches it on and it ships **off**.
-    ///
-    /// **It implies `--probe-fill 1.0` since batch 57**, which is what keeps it meaning what it
-    /// meant: the texture holds a real bake in the shipping build, and pinning it back to a
-    /// constant is the whole of why `amb * tap` is bit-exact.
-    ///
-    /// It exists to price roadmap L1's read side before L1 is designed, and it is the one
-    /// switch here whose *off* state is the shipping build rather than the control -- see
-    /// `render::FLAG_PROBE_TAP` for why a diagnostic that ships on would tax every later
-    /// measurement.
+
     pub probe_tap: bool,
-    /// Batch 56's removal (`--probe-ambient`), which **implies `--probe-tap`**.
-    ///
-    /// The probe field replaces `shade_hit`'s ambient rather than multiplying into it, and the
-    /// terms a pre-composed directional field would make redundant leave the module. **The frame
-    /// it renders is wrong on purpose** -- the field holds a constant -- so this is a build to
-    /// measure and throw away, not a control and not a look.
+
     pub probe_ambient: bool,
-    /// Batch 57's ambient cube: the baked probe lattice supplies `shade_hit`'s directional
-    /// factor instead of `face_shade`'s per-normal constants. **Ships on**, and
-    /// `--no-probe-cube` is the control -- see `render::FLAG_PROBE_CUBE`.
+
     pub probe_cube: bool,
-    /// Batch 58's ground bounce: the ambient floor's colour and magnitude come from the baked
-    /// probe lattice rather than from one authored constant. `--no-probe-bounce` is the
-    /// control -- see `render::FLAG_PROBE_BOUNCE`.
+
     pub probe_bounce: bool,
-    /// Batch 60's bounced sunlight. `--no-probe-sun` clears it and the ambient floor is the
-    /// authored constant again -- see `render::FLAG_PROBE_SUN`, which carries why this is the
-    /// answer to ADR 0001 rather than a new term.
+
     pub probe_sun: bool,
-    /// Batch 60's louder bounce gain, `--probe-sun-high`. **Defaults off**, unlike every other
-    /// probe flag here: it is a sweep rung and not a control -- see `render::FLAG_PROBE_SUN_HIGH`.
+
     pub probe_sun_high: bool,
-    /// Batch 59's coloured block light: the flood carries a level per channel and `shade_hit`
-    /// derives the tint from what reached the cell, instead of one channel wearing
-    /// `BLOCK_TINT`. **Ships on**, and `--no-light-rgb` is the control -- see
-    /// `render::FLAG_LIGHT_RGB`.
+
     pub light_rgb: bool,
-    /// Batch 63's derived sky hue: the ambient's sky colour is integrated out of the sky model
-    /// the renderer already draws, per face, instead of one authored constant. **Ships on**, and
-    /// `--no-sky-tint` is the control -- see `render::FLAG_SKY_TINT`.
+
     pub sky_tint: bool,
-    /// Batch 65's Fresnel-weighted sky specular: every opaque surface reflects the sky,
-    /// weighted by Schlick at `GROUND_F0` and gated by the flood's own sky level. **Ships on**,
-    /// and `--no-sky-specular` is the control -- see `render::FLAG_HI_SKY_SPECULAR`. It is the
-    /// first control driven by the second specialization word rather than by `frame.flags`,
-    /// which batch 63 filled.
+
     pub sky_specular: bool,
-    /// Batch 72's full-chunk march: a ray that ignores water now walks a mixed root-FULL
-    /// chunk's water to the first dry voxel instead of stopping at the chunk's face --
-    /// roadmap P10's defect, 31,815 pixels at `coastline` measured at batch 53. **Ships
-    /// on**, and `--no-full-march` is the control, reproducing the pre-batch-72 frame bit
-    /// for bit; see `render::FLAG_HI_FULL_MARCH`.
+
     pub full_march: bool,
-    /// What the probe field is filled with. 1.0 ships, and at 1.0 the tap is bit-exact --
-    /// `amb * 1.0` is `amb` for every finite `amb` -- which is what makes the cost the only
-    /// thing the tap reports. **Any other value is the paired positive claim**: bit-exact
-    /// alone cannot be told from a tap that was never wired up, so `--probe-fill 0.5` has to
-    /// move the frame or the measurement means nothing.
-    /// What the probe field is filled with, when it is filled with anything at all.
-    ///
-    /// **`None` ships and means the field holds the bake**, which is batch 57. `Some(f)` pins
-    /// every texel to `f` and switches the bake's uploads off, which is what keeps batch 55's
-    /// and batch 56's diagnostics measuring the field their numbers were read off: at
-    /// `Some(1.0)` `--probe-tap` is bit-exact again -- `amb * 1.0` is `amb` for every finite
-    /// `amb` -- and any other value is that batch's paired positive claim, because bit-exact
-    /// alone cannot be told from a tap that was never wired up.
+
     pub probe_fill: Option<f32>,
-    /// Fill the probe field per texel instead of uniformly (`--probe-noise`). The build that
-    /// rules out a driver compressing a constant texture into a cost no real field would pay.
+
     pub probe_noise: bool,
-    /// Count `march`'s work instead of timing it (batch 53, `--march-stats`).
-    ///
-    /// Turns `render::FLAG_HEATMAP` on for a `--screenshot` run and prints what
-    /// `render::MarchStats` read back afterwards. **The capture it writes is the heatmap**,
-    /// not the frame, and the `atomicAdd` the flag enables is real work -- so this mode
-    /// measures a traversal and never a millisecond, which is exactly what it is for: a
-    /// count is the one reading a heat-soaked laptop cannot move.
+
     pub march_stats: bool,
-    /// Glass transmits (batch 38b). `--no-glass` is the control and reproduces the
-    /// pre-batch-38b *shading* bit for bit; being in `render::SPEC_MASK` it does so for free.
-    ///
-    /// **It is not a pure revert, and it is the only control in the table that is not.** The
-    /// batch also made `block::GLASS` `opaque: false`, which is a world change `light.rs`
-    /// bakes into a chunk and no pipeline override can undo, so at a vantage holding glass
-    /// this reproduces the old shading over the new lighting. Where no glass has been placed
-    /// the two coincide exactly, which is every vantage the fixture had before this batch.
-    /// See `render::FLAG_GLASS` for the whole argument.
+
     pub glass: bool,
-    /// Distant terrain shadows (batch 37). `--no-distant-shadows` is the control and
-    /// reproduces the pre-batch-37 frame bit for bit; being in `render::SPEC_MASK` it does so
-    /// for free. See `render::FLAG_DISTANT_SHADOWS` for what it also changes about
-    /// `--no-terrain-shafts`, which is the half a bench here has to know: the envelope has two
-    /// readers now and that control speaks for only one of them.
+
     pub distant_shadows: bool,
-    /// The short shadow march under water (batch 41). `--no-water-shadow-cut` is the control
-    /// and reproduces the pre-batch-41 frame bit for bit; being in `render::SPEC_MASK` it does
-    /// so for free.
-    ///
-    /// **It is the one control whose look cost is paid by a different batch's feature**, which
-    /// is the half a bench here has to know: `shade_hit` hands the interval past this budget
-    /// to batch 37's light envelope, so with `--no-distant-shadows` also set the truncation
-    /// stops being nearly invisible and starts deleting a real shadow. The two compose, and
-    /// `crate::harness::IMPLIES` carries that as a claim rather than a sentence. See
-    /// `render::WATER_SHADOW_DIST`.
+
     pub water_shadow_cut: bool,
-    /// A thinner canopy (batch 43). `--no-leaf-thin` is the control and reproduces the
-    /// pre-batch-43 frame bit for bit; being in `render::SPEC_MASK` it does so for free.
-    ///
-    /// *How much* of a leaf block survives the carve is `render::LEAF_FILL`, swept by eye
-    /// against a wooded crest and a canopy seen from above; this only chooses between that
-    /// number and the one batch 38 authored. **Deliberately not nested under `leaf_cutout`**
-    /// -- see `render::FLAG_LEAF_THIN`.
+
     pub leaf_thin: bool,
     pub lod: LodConfig,
     pub width: u32,
     pub height: u32,
-    /// Internal render resolution as a fraction of the window.
+
     pub render_scale: f32,
-    /// Static sub-pixel offset for every primary ray, in pixels. `None` lets the temporal
-    /// pass walk its own eight-phase sequence; setting it pins every frame to one offset,
-    /// which is what makes a jittered capture comparable to an unjittered one.
+
     pub jitter: Option<(f32, f32)>,
-    /// Temporal anti-aliasing.
+
     pub taa: bool,
-    /// Frames a `--screenshot` accumulates before it captures. The whole verification story
-    /// in the docs is deterministic single-frame A/B, and an accumulating resolve only stays
-    /// deterministic if the frame count is fixed and stated.
+
     pub taa_frames: usize,
-    /// Extra mip bias in `resolve`, on top of the render-scale one the renderer derives.
+
     pub mip_bias: f32,
-    /// Side of the sub-pixel jitter grid a `--screenshot` converges a **reference** over; 0 is
-    /// off and captures one frame the ordinary way. `--reference 16` renders 256 frames, one
-    /// per grid cell, averages them in linear and writes the mean plus the two half-averages
-    /// the noise floor is computed from.
-    ///
-    /// A reference is the only thing in this project allowed to rank a look change, and batch
-    /// 21 is why the halves are not optional: a 64-sample reference scored a sweep cleanly and
-    /// confidently while 95% of its signal was its own sampling noise. A reference that cannot
-    /// state its own floor should not be allowed to rank anything, so this mode always states
-    /// it.
+
     pub reference: u32,
     pub fov_degrees: f32,
     pub vsync: bool,
     pub shadows: bool,
     pub hiz: bool,
     pub hud: bool,
-    /// Batch 70's idle repaint: when a presented frame asks nothing new of the renderer --
-    /// camera, `World::version`, the pipeline words and the sun's tick all unchanged -- the
-    /// window loop presents the last converged frame again instead of rendering it again,
-    /// at roughly the blit's cost. **`--no-idle-repaint` restores the pre-67 cadence where
-    /// every presented frame is rendered, and is the control**: the two arms draw the same
-    /// world from the same buffers, one of them orders of magnitude cheaper while the
-    /// player stands still. A headless mode never engages it -- `app.rs` is its only
-    /// caller, which is what keeps every capture and bench in the fixture out of it. The
-    /// rule is in `src/idle.rs`; the budget and the rejected alternatives are the batch's
-    /// row in `docs/ledger.md`.
+
     pub idle_repaint: bool,
-    /// The hotbar slot the player starts on, and therefore the one `--hud` draws highlighted.
-    ///
-    /// **Four, because that is the slot every `--hud` capture has shown since the HUD
-    /// existed** -- it was a literal `4` passed to `draw_hud` from the capture loop, which is
-    /// to say a picture claiming a selection no player held. Routing it through the player
-    /// makes the picture and the journal agree about one value, and keeping the number at 4
-    /// is what makes batch 32's control exactly zero rather than nearly zero. `--resume`
-    /// overrides it, the way a loaded journal overrides everything else about the player.
+
     pub hotbar: usize,
-    /// `--bar`'s ten block ids, still as text. Batch 34.
-    ///
-    /// **Unparsed here on purpose.** Every refusal it can earn -- a bad id, the wrong count,
-    /// a block no bar may hold, a journal that already carries a bar -- is a sentence, and
-    /// `journal::open` is where this crate says such sentences. Parsing it here would put
-    /// half the rule in a parser with no error channel and the other half one file over.
+
     pub bar: Option<String>,
     pub demo_edits: bool,
-    /// Build batch 38b's glasshouse instead of the hut. A *second* structure and not a
-    /// variant of the first, because `--demo-edits` is the `edits` vantage and half a dozen
-    /// batches are measured against that reference -- see `scene::build_glass_structure`.
+
     pub demo_glass: bool,
-    /// Build batch 59's lamp chamber instead of either of the above. A *third* structure for
-    /// `demo_glass`'s reason one line up, and one sharper: the other two are references half a
-    /// dozen batches are measured against, and this one has to hold blocks whose ids did not
-    /// exist before this batch -- so it is the one structure no earlier binary can be handed.
-    /// See `scene::build_lamp_chamber` and `docs/harness.md` on what that costs a sweep.
+
     pub demo_lamps: bool,
-    /// Replay a saved edit journal after worldgen (batch 29). `None` is a world that is
-    /// exactly what the seed says it is, which is every capture taken before this batch and
-    /// every one taken since without the flag.
-    ///
-    /// A **missing file is an error**, not an empty journal, for the same reason the seed
-    /// stored in the header is checked: a mistyped path would otherwise render an unedited
-    /// world and say nothing about it, and in a sweep whose pass condition is `0 pixels
-    /// differing` that is indistinguishable from success.
+
     pub load_edits: Option<String>,
-    /// Write the journal -- the loaded entries and this session's alike -- when the mode
-    /// ends. Playing a persistent world is both flags at one path.
-    ///
-    /// Two flags rather than one because each half has to be separately runnable: the A/B
-    /// that proves a reloaded world is the world you left is `--demo-edits --save-edits f`
-    /// against `--load-edits f`, and a single flag that did both could only ever compare a
-    /// build against itself.
+
     pub save_edits: Option<String>,
-    /// Start the player where the loaded journal says, rather than at the spawn column or
-    /// the vantage the camera flags describe. Batch 32.
-    ///
-    /// **The window does this without being asked and a headless mode does not**, and that
-    /// boundary is drawn at the mode rather than per field, because it is the mode that
-    /// decides who owns the camera. A window has nothing else that claims one, so a loaded
-    /// journal is the whole answer to where the player is. A capture has `--cam-height`,
-    /// `--cam-yaw`, `--cam-pitch` and `--cam-submerge`, all measured from `spawn_position`,
-    /// and all fourteen vantages of the measurement fixture are those flags: a journal that
-    /// silently moved the camera would turn every named vantage into "wherever the file
-    /// says", which is not a vantage at all. So a capture asks.
-    ///
-    /// It is refused when there is nothing to resume from -- no `--load-edits`, or a journal
-    /// with no player block in it -- rather than falling back to the default camera, which
-    /// would be a frame that looks exactly like a frame.
+
     pub resume: bool,
-    /// A world on disk rather than a flag: load `PATH` if it is there, **append each edit to
-    /// it as the edit lands**, and write it back compacted when the mode ends. Batch 33.
-    ///
-    /// It is not `--load-edits PATH --save-edits PATH` spelled shorter, and the difference is
-    /// the whole feature. Those two are a *measurement* pair -- each half separately runnable
-    /// so that one binary can render `--demo-edits --save-edits f` against `--load-edits f`,
-    /// which is why a missing file is an error there. This is a *world*, and a world you have
-    /// not played yet is a file that is not there, so a missing one starts a new world and
-    /// says so out loud. **The sentence is the only guard left against a mistyped path**: the
-    /// two outcomes of this flag are "loaded your world" and "started a different one", and
-    /// nothing in the file system can tell them apart on your behalf.
-    ///
-    /// The append log hangs off this flag and not off `--save-edits`, so every A/B taken
-    /// through those two writes the same bytes it wrote in batch 29.
+
     pub edits: Option<String>,
-    /// End the mode without the exit save -- which is exactly what a killed session looks
-    /// like to the file. Batch 33's measurement machinery, and the only way a fixture can
-    /// see the append log at all.
-    ///
-    /// A run that ends by writing the whole journal leaves the same file whether it appended
-    /// as it went or not, so without this flag the crash-safety half of `--edits` is
-    /// unobservable: `lessons.md`'s "a fix nothing exercises is not a fix", aimed at a
-    /// feature whose entire purpose is what happens when the ordinary path does not run.
+
     pub no_exit_save: bool,
-    /// Light floor in linear radiance, so unlit caves are dim rather than pure black.
+
     pub ambient: f32,
-    /// Exponential height fog and the scattering lobe it shares with the sky.
+
     pub fog: Fog,
-    /// The cloud deck. `--cloud-cover 0` switches it off and is the control for everything
-    /// in batch 10: the sky function returns early, so the frame is the pre-batch-10 one
-    /// bit for bit and costs what it cost then.
+
     pub clouds: Clouds,
-    /// G1's two sky levers (batch 95, roadmap G1). Both default to 0, so the pre-95 sky
-    /// is the control and is bit-exact; parse-clamped 0..1 like every other knob.
+
     pub sky: SkyLook,
-    /// Crepuscular rays. `--godray-strength 0` switches the shadowing of the haze's
-    /// scattering lobe off and `--cloud-shadow 0` switches the deck's occlusion of the
-    /// ground off; together they are the control for everything in batch 11, and each is
-    /// bit-exact on its own.
+
     pub godrays: GodRays,
     pub ao: bool,
     pub physics: bool,
-    /// Fraction of the day elapsed; 0.25 is morning, 0.5 noon.
+
     pub time_of_day: f32,
     pub day_length_seconds: f32,
     pub freeze_time: bool,
     pub stream_budget_ms: f32,
-    /// Screenshot camera: height above the spawn column, and look angles in degrees.
+
     pub cam_height: f32,
     pub cam_yaw: f32,
     pub cam_pitch: f32,
-    /// Degrees of yaw per accumulated frame during a `--screenshot`, ending on `cam_yaw`.
-    /// Zero is a still camera. Non-zero is the only way to put real motion behind the
-    /// captured frame, which is the only way to see what the temporal pass does with it.
+
     pub cam_spin: f32,
-    /// Blocks of forward travel per accumulated frame during a `--screenshot`, ending on
-    /// the configured position. Rotation reprojects almost perfectly and disoccludes only
-    /// at the screen edge; translation disoccludes at every silhouette in the frame, which
-    /// is the case the temporal pass actually has to survive.
+
     pub cam_dolly: f32,
-    /// Put the screenshot camera this many blocks below the surface of the nearest water,
-    /// which is the only way to reach the underwater medium headlessly. Zero is off.
-    ///
-    /// **Negative floats the camera that far *above* the surface instead**, which is the only
-    /// way to reach the one vantage that checks a water reflection: from just above the
-    /// water the reflection is very nearly the mirror image of the sky about the horizon, so
-    /// the frame's own symmetry is the test. Batch 10 needed it and there was no way to get
-    /// there.
+
     pub cam_submerge: f32,
-    /// The value of `frame.time` at the **captured** frame, in seconds. Zero is the default
-    /// and every capture taken before batch 23 is at zero, so the whole existing corpus is
-    /// unchanged by this field existing.
-    ///
-    /// `wave_speed` and `cloud_speed` multiply `frame.time` and nothing else does, so this is
-    /// the only knob that moves the sea's phase or the deck's drift in a headless render.
-    /// Until batch 23 both headless paths hardcoded `0.0`, which meant the *moving* sea and
-    /// the *drifting* deck were invisible to every capture, test and hash in the tree -- the
-    /// only way to look at either was to run the game, which is how batch 10's parallax-free
-    /// reflection shipped and why batches 10 and 16 both had to leave ghosting unmeasured.
-    ///
-    /// It is a still capture at a chosen moment. Two captures at two phases are two seas;
-    /// neither has a *moving* field behind it, which is what `anim_rate` is for.
+
     pub anim_time: f32,
-    /// Seconds of `frame.time` per accumulated frame during a `--screenshot`, ending on
-    /// `anim_time`. Zero is a frozen field.
-    ///
-    /// The exact shape of `cam_spin` and `cam_dolly` and for the exact reason: the temporal
-    /// pass can only be asked what it does with motion if there is real motion behind the
-    /// captured frame. The difference is *what* moves. `cam_dolly` moves the camera, which
-    /// disoccludes at every silhouette; this moves the field under a camera that is standing
-    /// still, which disoccludes nothing and reprojects perfectly -- so anything it ghosts is
-    /// the field's own history and not a reprojection failure. That is the case batches 10
-    /// and 16 could not reach, and the two are separable only because they are two flags.
-    ///
-    /// Read by `--screenshot` alone. `--reference` converges a *still* and so holds the phase
-    /// at `anim_time`, and `--bench-frames` has never swept `cam_spin` either: a bench is a
-    /// fixed configuration, and `--anim-time` is how it picks which one.
+
     pub anim_rate: f32,
 }
 
 impl Config {
-    /// The journal to read, and whether a file that is not there is a refusal.
-    ///
-    /// Three flags reach one question, and the boolean is the only thing that separates
-    /// them. `--load-edits` is a *measurement* input and a missing file is a typo, which has
-    /// to be an error: `errors.md`'s rule is that a sweep whose pass condition is `0 pixels
-    /// differing` cannot tell an unedited world from a passing one. `--edits` is a *world*
-    /// and a missing file is a world nobody has played, which is the ordinary first run.
-    ///
-    /// `--edits` wins when both are given rather than being refused, and the refusal lives
-    /// at `journal::open` instead -- one place that can say why, in a sentence, on the way
-    /// out. A precedence rule here would be a second answer to the same question.
+
     pub fn journal_in(&self) -> Option<(&Path, bool)> {
         match (&self.edits, &self.load_edits) {
             (Some(p), _) => Some((Path::new(p), false)),
@@ -590,11 +231,6 @@ impl Config {
         }
     }
 
-    /// Where the whole journal is written when the mode ends, compacted and sorted.
-    ///
-    /// `--no-exit-save` reads as `None` **here**, at the one place every mode already asks
-    /// this question, rather than as a branch at each of the three call sites -- which is
-    /// the argument `journal::save_if_asked` makes about its own signature, one file over.
     pub fn journal_out(&self) -> Option<&Path> {
         if self.no_exit_save {
             return None;
@@ -606,16 +242,8 @@ impl Config {
     }
 }
 
-
 impl Config {
-    /// The generator this configuration asks for.
-    ///
-    /// **It exists because there were four copies of it and a fifth was about to be written.**
-    /// `app`, `screenshot`, `bench` and `bench_terrain` each built the same five-argument
-    /// `with_options` call, so batch 60 adding one more generator option would have had to
-    /// touch all four and would have been one edit away from a build where the control worked
-    /// in a screenshot and not in a bench -- which is exactly the class of defect
-    /// `docs/harness.md` calls indistinguishable from success.
+
     pub fn worldgen(&self) -> crate::worldgen::WorldGen {
         let mut gen = crate::worldgen::WorldGen::with_options(
             self.seed,
@@ -624,25 +252,20 @@ impl Config {
             self.foliage,
             self.meadow,
         );
-        // Not a `with_options` parameter: it changes the probe bake rather than the world, and
-        // every one of the test suite's own construction sites wants the default.
+
         gen.bounce_shadow = self.bounce_shadow;
-        // Same reason a second time: A5's arm changes the world's shape rather than its
-        // compile, so it rides the setter lane rather than growing `with_options` a param.
+
         gen.tree_blue_noise = self.tree_blue_noise;
-        // And a third: A8's piece 4 is one id inside `coarse_meadow`, nothing else.
+
         gen.meadow_side = self.meadow_side;
-        // And a fourth: batch 101's G2 -- the setter lane the A5 lineage already cut.
+
         gen.grass_dense = self.grass_dense;
         gen
     }
 }
 
-
 impl Config {
-    /// The blit selector word: 0 none, 1 warm, 2 cine (97b). One word, the A10
-    /// one-uniform rule -- the three writers hand `blit.rs` this and nothing else, so an
-    /// unknown combination cannot spell a fourth cast at a call site.
+
     pub fn grade_value(&self) -> u32 {
         self.grade_warm as u32 | u32::from(self.grade_cine) << 1
     }
@@ -654,15 +277,7 @@ impl Default for Config {
             seed: 1337,
             sea_level: crate::worldgen::SEA_LEVEL,
             water_absorb: 1.0,
-            // **0.0 ships since batch 26**, and 0.2 before it was batch 21b's deliberate
-            // choice rather than its oversight: 21b built this flattening first, found it
-            // moved 0 pixels at fourteen vantages -- the null that revealed the glass-layer
-            // stride -- and left the lever in the roadmap for 21a rather than spending it on
-            // a batch that had just disproved it. Batch 26 measured the lever and took it:
-            // a periodic stipple worth 27-34% of `speckle` at `coastline` and `open-sea`
-            // against a smooth signal of under half a code value, and the whole of batch
-            // 21's diamond weave at `lattice`. Reasoning in
-            // `docs/water.md`; `--water-mottle 0.2` reproduces the old sea.
+
             water_mottle: 0.0,
             water_reflect: true,
             water_refract: true,
@@ -782,17 +397,11 @@ impl Default for Config {
 pub enum Mode {
     Run,
     Screenshot { path: String },
-    /// Batch 98: the lookbook -- `lookbook::VIEWS` x `lookbook::COMBOS` through the
-    /// screenshot core, composed into one labeled PNG so the five arms' by-eye verdict
-    /// can be assigned without a human keeping score. One file, flags already baked
-    /// into their own tiles.
+
     Lookbook { dir: String },
     BenchTerrain { chunks: usize },
     BenchFrames { frames: usize },
-    /// Compare two saved frames without rendering anything: the difference numbers, the
-    /// bbox every differing pixel sits in, and optionally a per-cell grid so a pop says
-    /// *where* it is, not just that it is. Roadmap D2b's missing instrument: `lod` has no
-    /// declared crops, and the crop a spike needs is the one this prints.
+
     Diff {
         a: String,
         b: String,
@@ -801,22 +410,11 @@ pub enum Mode {
     },
 }
 
-/// `0.25,-0.5`, or one number for both axes.
 fn parse_pair(s: &str) -> Option<(f32, f32)> {
     let (a, b) = s.split_once(',').unwrap_or((s, s));
     Some((a.trim().parse().ok()?, b.trim().parse().ok()?))
 }
 
-/// What [`parse_args`] prints for an argument it does not recognise.
-///
-/// Named once and shared with the measurement fixture, the way
-/// [`crate::render::TRUNCATION_MARK`] is, and for a sharper reason than that one. The
-/// parser **ignores** what it cannot read and the process still exits 0, so a control
-/// whose name is misspelled produces a capture identical to one with no flag at all --
-/// and in a bit-exactness sweep, where the expected answer *is* `0 pixels differing`,
-/// that is the one failure mode which looks exactly like success. Every claim tested
-/// that way would pass, and pass vacuously. `harness::render` refuses such a capture,
-/// which keeps working only while both sides of the message are this constant.
 pub const UNKNOWN_ARG_MARK: &str = "ignoring unknown argument";
 
 pub fn parse_args() -> (Config, Mode) {
@@ -828,13 +426,6 @@ pub fn parse_args() -> (Config, Mode) {
     (cfg, mode)
 }
 
-/// The parser proper, with the process's environment factored out and the unrecognised
-/// arguments handed back rather than printed.
-///
-/// Both halves of that are for `tests/harness.rs`, which runs every argument list in the
-/// vantage table through here and fails on anything this does not recognise. That test is what
-/// stops the fixture from outliving a flag: before batch 22 a vantage was a sentence in a
-/// document, and nothing anywhere could notice when it stopped being runnable.
 pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
     let mut cfg = Config::default();
     let mut mode = Mode::Run;
@@ -855,10 +446,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                 }
             }
             "--diff" => {
-                // The pair first, then any of its options; anything unrecognised takes the
-                // same `unknown` path as a top-level flag, because `UNKNOWN_ARG_MARK` is
-                // the load-bearing half of `harness::render`'s bargain -- a misspelled
-                // option silently dropping to its default is the one failure that passes.
+
                 let (a, b) = (next(&mut i), next(&mut i));
                 let (mut grid, mut crop) = (None, None);
                 while args.get(i + 1).is_some_and(|v| v.starts_with("--")) {
@@ -908,26 +496,19 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                     _ => cfg.water_sec_scale,
                 };
             }
-            // A10: unknown shoulders fall to `knee` instead of rejecting -- a "tone map"
-            // the engine won't run silently is worse than the spelling it did not get.
+
             "--tone-map" => {
-                // Unknown shoulders fall to `knee`: a tone map the engine won't run
-                // silently is worse than the spelling it did not get.
+
                 cfg.tone_map_aces = next(&mut i) == "aces";
             }
-            // G1: same spelling philosophy as `--tone-map` -- an unknown cast falls to the
-            // one the engine has always shipped, loudly parseable rather than rejected.
+
             "--grade" => {
-                // 95's warm cast and 97b's cine print are one selector word; `none`
-                // turns both off and an unknown spelling falls to the shipped cast for
-                // the parser's standing reason.
+
                 let v = next(&mut i);
                 cfg.grade_warm = v == "warm";
                 cfg.grade_cine = v == "cine";
             }
-            // 101's dial (the cine sweep verdict's fix): 1.0 keeps the grade exact by
-            // construction; below it the graded pixel lerps back toward the ungraded
-            // one. An unparseable value falls to 1.0 like the other float knobs.
+
             "--grade-strength" => {
                 cfg.grade_strength = next(&mut i).parse().unwrap_or(1.0);
             }
@@ -980,7 +561,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                 let v: i32 = next(&mut i).parse().unwrap_or(4);
                 cfg.shaft_texel = v.clamp(1, 64);
             }
-            // G1 (batch 95): four data-only sky knobs, same uniform class as A1's lift.
+
             "--cloud-patch" => {
                 let v: f32 = next(&mut i).parse().unwrap_or(0.0);
                 cfg.clouds.patch = v.clamp(0.0, 1.0);
@@ -1021,8 +602,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
             "--no-water-dark" => cfg.water_dark = false,
             "--no-snell" => cfg.snell = false,
             "--probe-tap" => cfg.probe_tap = true,
-            // Implies `--probe-tap`: the ambient has to come from somewhere, and the removal
-            // without the tap measures a shader that reads no light at all.
+
             "--probe-ambient" => {
                 cfg.probe_ambient = true;
                 cfg.probe_tap = true;
@@ -1095,9 +675,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
             "--resume" => cfg.resume = true,
             "--edits" => cfg.edits = Some(next(&mut i)),
             "--no-exit-save" => cfg.no_exit_save = true,
-            // Clamped rather than refused: it indexes a fixed array three call sites away,
-            // and unlike a slot read out of a *file* there is a human at the other end of
-            // this one who can see which hotbar cell they got.
+
             "--bar" => cfg.bar = Some(next(&mut i)),
             "--hotbar" => {
                 cfg.hotbar = next(&mut i)
@@ -1337,16 +915,9 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
         }
         i += 1;
     }
-    // Batch 55's and batch 56's diagnostics measured a field holding a *constant*, and batch 57
-    // filled the same texture with a real bake. Pinning it here -- after the loop, so an
-    // explicit `--probe-fill` in either order still wins -- is what keeps their two rows in
-    // `CLAUDE.md`'s control table true verbatim rather than true with a new caveat attached:
-    // `--probe-tap` alone is still bit-exact, because the field it taps is still 1.0.
+
     if (cfg.probe_tap || cfg.probe_ambient) && cfg.probe_fill.is_none() {
         cfg.probe_fill = Some(1.0);
     }
     (cfg, mode, unknown)
 }
-
-
-
