@@ -61,11 +61,11 @@ anti-aliasing, **Esc** pause/resume. Choose **Play** on the title screen to begi
 
 The menu has **Display, Graphics, Appearance, Render lab and Effects lab** pages with Apply,
 Cancel and Restore Defaults. Gameplay and weather pause while menus are open.
-The seven shader experiments are **off by default and title-only**; they lock after
-Play. Compact shade_hit, separate glass shading and a dedicated primary-shadow pass
-are implemented as unmeasured performance A/Bs. The glass-reflection/water-look/wind
-and soft-shadow switches expose existing experimental paths, not new fixes.
-Try `--isolate-glass` and/or `--shadow-pass` (revert with their `--no-` counterparts).
+The seven shader experiments are title-only and lock after Play. Six are off by default;
+the dedicated primary-shadow pass is the exception -- it ships on, is forced on at every
+settings load, and its documented revert only warns. Compact shade_hit and separate glass
+shading are unmeasured performance A/Bs; the rest expose existing paths, not new fixes.
+Try `--isolate-glass` (revert with its `--no-` counterpart). The primary-shadow pass has none
 Shadow-pass mode also isolates glass and water; resolve timing includes the whole family.
 See [MENU-NOTES.md](MENU-NOTES.md) for usage and [EXPERIMENTS.md](EXPERIMENTS.md)
 for the architecture, measured correctness checks and native-validation limits.

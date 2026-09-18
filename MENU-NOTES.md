@@ -11,7 +11,7 @@ The latest default lighting/water repairs and CLI-only softness, quality and dia
 - **Title:** Play, Settings, Quit. Full voxel Renderer creation and streaming updates are deferred until Play; the title itself still needs a supported GPU for presentation.
 - **Pause:** Resume, Settings, Quit. Escape pauses; Escape from the pause page resumes. Focus loss or minimization also pauses.
 - **Settings:** draft values are separate from applied preferences. Apply and save commits; Cancel / Back discards unapplied edits. Restore Defaults edits the draft, not the applied state.
-- **Render lab / Effects lab:** seven off-by-default shader switches, editable **only on the title before Play**. During a session they are locked; ordinary settings remain available. Restore Defaults during a session retains locked shader choices. Restart the application to change them on its title screen.
+- **Render lab / Effects lab:** six off-by-default shader switches and the mandatory dedicated shadow pass, editable **only on the title before Play**. During a session they are locked; ordinary settings remain available. Restore Defaults during a session retains locked shader choices. Restart the application to change them on its title screen.
 - **Quit:** attempts the configured world-journal save first. Missing destination or a save failure presents Back and explicit Quit without saving. Preferences and world journals are separate files.
 
 Mouse targets and drawing use the same layout. Arrows/Tab navigate; Enter/Space activate; Left/Right adjust. Escape goes back. The menu consumes input before player movement, mouse look, hotbar or block-edit handling. Held input is cleared at pause/focus transitions and on resume.
@@ -23,7 +23,7 @@ Mouse targets and drawing use the same layout. Arrows/Tab navigate; Enter/Space 
 | Display | Render scale 25–100%, FOV 30–120°, VSync, TAA |
 | Graphics | Sun shadows, AO, water reflections, water transparency/refraction |
 | Appearance | Original/ACES tone curve, Natural/Warm/Cinema grade, grade strength, fog density, ambient light |
-| Render lab | Compact shade_hit schedule, separate glass pass, dedicated shadow pass, soft shadows |
+| Render lab | Compact shade_hit schedule, soft shadows (the glass and shadow-pass rows were removed; both settings are still parsed) |
 | Effects lab | Existing glass reflection, water look, wind sway |
 
 There are **13 ordinary settings and seven title-only experiments**. Scale steps by 5 percentage points; FOV by 5°; grade strength by 10%; fog by 0.0001; ambient by 0.01. Fog is bounded to 0–0.01 and ambient to 0–0.5. Valid arbitrary startup scales such as 0.8 are retained until adjusted.

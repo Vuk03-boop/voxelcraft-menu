@@ -1025,8 +1025,8 @@ near reach (the seam is the hybrid's characteristic failure, so that is where it
 `PROBE_DIM_XZ` 64 -> 128 holding the 512-block toroidal period *unchanged* (every
 `UPLOAD_REACH` claim is period arithmetic and stands unedited, D1b's window included), the
 two mirrored WGSL numbers with their `const _` pins. The tap is still one trilinear read;
-the bill is 8x the worker bake and 12.6 MB -> ~100.7 MB of the 3.9 GB of VRAM, which is
-96.5% free. Max 3D texture axis on this hardware is 16,384 against the 768-texel slab stack
+the bill is 8x the worker bake and 12.6 MB -> ~100.7 MB of the 3.9 GB of VRAM: about 94% free once the shipped field is counted, rather than the
+inherited 96.5% from the 12 MB era. Max 3D texture axis on this hardware is 16,384 against the 768-texel slab stack
 -- probed, not assumed, because this tree once rejected a design on a limit it had never
 queried.
 

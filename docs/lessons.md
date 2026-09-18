@@ -71,7 +71,7 @@ file was a specific rejection and now lives there with its number.
   |---|---|---|
   | **0.372** | invisible | batch 60's transport half alone |
   | **1.2185** | invisible in a slider | batch 63 at its physical strength |
-  | **2.2248** | shipped | `--probe-sun` at `PROBE_SUN_GAIN` 0.10 |
+  | **2.2248** | shipped | the shipped `PROBE_SUN_GAIN` 0.10, which has no enable flag of its own |
   | **2.87** | rejected by eye | [`ADR 0001`](adr/0001-no-elevation-form-factor.md) |
   | **3.0379** | shipped | batch 63 at `SKY_TINT_SAT` 2.5 |
   | **5.7074** | too loud, rejected by the user | `--probe-sun-high` at 0.25 |

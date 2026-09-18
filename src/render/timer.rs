@@ -19,7 +19,7 @@ pub mod q {
     pub const RESOLVE: u32 = 8;
     pub const MARCH2: u32 = 10;
     pub const TAA: u32 = 12;
-    /// Batch 35's light-envelope scan. 14 is the last pair `MAX_QUERIES` has room for.
+    /// Batch 35's light-envelope scan. 20 is the last pair `MAX_QUERIES` has room for.
     pub const SHAFT: u32 = 14;
     pub const SHADOW_RAY: u32 = 16;
     pub const SHADOW_H: u32 = 18;

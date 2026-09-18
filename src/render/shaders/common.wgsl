@@ -215,7 +215,7 @@ const PERM_D4: u32 = 2u;
 // Batch 57's sampler for it, and it is its own rather than `linear_samp` because the field's
 // three axes do not agree. X and Z are toroidal -- the lattice repeats every
 // `PROBE_DIM_XZ * PROBE_SPACING` blocks -- so a tap at the seam has to *filter across* it, and
-// `linear_samp` clamps, which would put an eight-block band of wrong shading on one plane
+// `linear_samp` clamps, which would put a four-block band of wrong shading on one plane
 // every 512 blocks. Y is not toroidal: `WORLD_HEIGHT / PROBE_SPACING` is exactly the field's
 // height, so clamping there is the world's own top and bottom. Repeat, clamp, repeat.
 @group(0) @binding(21) var probe_samp: sampler;
@@ -1378,7 +1378,11 @@ fn march_chunk(ci: u32, ro_w: vec3<f32>, rd: vec3<f32>, t_limit: f32, skip_water
     let c = chunks[ci];
     let vs = c.voxel_size;
     let ro = (ro_w - c.origin) / vs;
-    let inv = 1.0 / rd;
+    // A zero component would make the raw reciprocal infinite, and the DDA would then
+    // step on 0 * inf and lose the ray. Positions and normals keep using the untouched
+    // rd, so every ray with no near-zero component stays bit-identical.
+    let rd_dda = select(rd, vec3<f32>(1e-6, 1e-6, 1e-6) * sign(rd + vec3<f32>(1e-9)), abs(rd) < vec3<f32>(1e-6));
+    let inv = 1.0 / rd_dda;
     let bmin = (c.aabb_min - c.origin) / vs;
     let bmax = (c.aabb_max - c.origin) / vs;
     let t0 = (bmin - ro) * inv;
@@ -1400,7 +1404,7 @@ fn march_chunk(ci: u32, ro_w: vec3<f32>, rd: vec3<f32>, t_limit: f32, skip_water
     } else {
         axis = 2u;
     }
-    let pos_dir = rd > vec3<f32>(0.0);
+    let pos_dir = rd_dda > vec3<f32>(0.0);
     var pos = ro + rd * t;
     var cell = vec3<i32>(floor(pos));
     if t_enter > 0.0 {
@@ -2103,8 +2107,12 @@ fn shadow_ray(ro: vec3<f32>, rd: vec3<f32>, max_dist: f32) -> bool {
         r_ro = ro + rd * t_surf;
         r_dist = r_dist - t_surf;
     }
-    let inv = 1.0 / rd;
-    let pos_dir = rd > vec3<f32>(0.0);
+    // A zero component would make the raw reciprocal infinite, and the DDA would then
+    // step on 0 * inf and lose the ray. Positions and normals keep using the untouched
+    // rd, so every ray with no near-zero component stays bit-identical.
+    let rd_dda = select(rd, vec3<f32>(1e-6, 1e-6, 1e-6) * sign(rd + vec3<f32>(1e-9)), abs(rd) < vec3<f32>(1e-6));
+    let inv = 1.0 / rd_dda;
+    let pos_dir = rd_dda > vec3<f32>(0.0);
     var cell = vec3<i32>(floor(r_ro / 64.0));
     var t = 0.0;
     var last: u32 = NO_CHUNK;
@@ -2219,8 +2227,12 @@ const SOFT_MISS_DIST: f32 = 64.0;
 // nearest blocker by a cell chord. That is exact enough for a *budget*: the cone
 // margin below (2x the aperture chord) absorbs it.
 fn shadow_ray_t(ro: vec3<f32>, rd: vec3<f32>, max_dist: f32) -> f32 {
-    let inv = 1.0 / rd;
-    let pos_dir = rd > vec3<f32>(0.0);
+    // A zero component would make the raw reciprocal infinite, and the DDA would then
+    // step on 0 * inf and lose the ray. Positions and normals keep using the untouched
+    // rd, so every ray with no near-zero component stays bit-identical.
+    let rd_dda = select(rd, vec3<f32>(1e-6, 1e-6, 1e-6) * sign(rd + vec3<f32>(1e-9)), abs(rd) < vec3<f32>(1e-6));
+    let inv = 1.0 / rd_dda;
+    let pos_dir = rd_dda > vec3<f32>(0.0);
     var cell = vec3<i32>(floor(ro / 64.0));
     var t = 0.0;
     var last: u32 = NO_CHUNK;
