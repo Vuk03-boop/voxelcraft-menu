@@ -60,16 +60,34 @@ binary, then writes `uploadme.txt` (plus a full command trace in
    *determinism twin* — two identical captures must diff to zero.
 3. **Flag sweep**: every CLI arm as a screenshot diffed against the baseline
    with the binary's own `--diff`. Arms that merely restate defaults must be
-   bit-identical (EXACT); feature arms must move pixels (CHANGE), and an arm
-   that moves nothing is reported SUSPECT rather than silently green.
+   bit-identical (EXACT — `compact-shade-hit` is one: it is an alternate
+   build of the same math, so bit-exactness is its contract); feature arms
+   must move pixels (CHANGE), and an arm that moves nothing is reported
+   SUSPECT rather than silently green. Arms whose feature the baseline
+   capture has nothing for are paired with a curated vantage from
+   `src/harness/vantage.rs`'s catalogue (the demo structures and the
+   submerged/periscope scenes exist for exactly this), and the few that
+   still cannot trigger in the spawn scene carry the INERT expectation and
+   report as expected-inert with the reason spelled out.
 4. **Perf sweep**: `--bench-frames` under perf-relevant flags with
-   wall/gpu-total deltas vs baseline.
+   wall/gpu-total deltas vs baseline, then one baseline re-run at the end so
+   thermal/order drift (laptops heat up across the sweep) can be told apart
+   from a real regression.
 5. **Functional**: edit-journal save/replay bit-identity, `--bench-terrain`
    timings, `--lookbook`, and the full `cargo test --release` summary.
 
 Verdicts land at the end of the file: `FAIL` needs a fix, `SUSPECT` needs a
-look. The file is designed to be pasted back so someone else can diagnose
-or optimize from it.
+look, `EXPECTED-INERT` is the scene saying "nothing to see" for a reason the
+report names (and a note fires if such an arm starts moving pixels — the
+trigger exists after all). The file is designed to be pasted back so someone
+else can diagnose or optimize from it.
+
+Scene-sensitivity notes learned the first time this ran: `--tint-strength`
+clamps to 1.0 in the CPU→GPU frame upload, so values above 1 are
+bit-identical by construction; `--probe-noise` only perturbs a forced
+`--probe-fill` pre-fill; `--snell`/`--snell-bend` engage only under water;
+the demo builders sit 14 blocks ahead of the camera, which the default
+vantage leaves buried inside the front hill.
 
 ## Protocol
 

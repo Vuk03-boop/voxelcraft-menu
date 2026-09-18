@@ -9,6 +9,11 @@ perf-relevant flags with --bench-frames, exercises the functional paths
 everything to uploadme.txt next to this run. Send that file back when asked;
 screenshots are kept in uploadme_runs/ for reference.
 
+Arms that may move zero pixels because the baseline capture has nothing for
+the feature to touch are paired with a curated vantage (from the same
+catalogue src/harness/vantage.rs uses) or given the INERT expectation, so a
+zero-pixel arm stays a signal instead of noise.
+
 Usage:
     python3 validation/upload_report.py [--fast] [--skip-tests] [--skip-lookbook]
                                         [--skip-perf] [--cases SUBSTR]
@@ -53,6 +58,7 @@ class Knobs:
 #   CHANGE -- args must move pixels vs baseline (catches dead arms).
 UN = "EXACT"
 CH = "CHANGE"
+INERT = "may-be-inert"
 
 CASES = [
     # -- restated defaults: must be bit-identical to baseline ---------------
@@ -69,6 +75,7 @@ CASES = [
     ("no-glass-reflect",         ["--no-glass-reflect"],                                      UN),
     ("no-isolate-glass",         ["--no-isolate-glass"],                                      UN),
     ("no-compact-shade-hit",     ["--no-compact-shade-hit"],                                  UN),
+    ("compact-shade-hit",        ["--compact-shade-hit"],                                     UN),
     ("water-sec-scale-2",        ["--water-sec-scale", "2"],                                  UN),
     ("fade-schedule-smoothstep", ["--fade-schedule", "smoothstep"],                           UN),
     ("cam-defaults",             ["--cam-height", "40", "--cam-yaw", "40", "--cam-pitch", "-14"], UN),
@@ -108,18 +115,18 @@ CASES += [
     ("water-sec-scale-4",        ["--water-sec-scale", "4"],                                  CH),
     ("water-absorb-3",           ["--water-absorb", "3"],                                     CH),
     ("water-look",               ["--water-look"],                                            CH),
-    ("no-water-far",             ["--no-water-far"],                                          CH),
-    ("no-water-dark",            ["--no-water-dark"],                                         CH),
+    ("no-water-far",           ["--no-water-far"],                                       INERT),
+    ("no-water-dark",          ["--no-water-dark"],                                      INERT),
     ("no-wave-aniso",            ["--no-wave-aniso"],                                         CH),
     ("no-wave-shoal",            ["--no-wave-shoal"],                                         CH),
     ("no-wave-fill",             ["--no-wave-fill"],                                          CH),
     ("wave-strong",              ["--wave-amp", "0.3", "--wave-scale", "12",
                                   "--wave-speed", "1.2"],                                     CH),
-    ("snell-bend",               ["--snell-bend"],                                            CH),
-    ("no-snell",                 ["--no-snell"],                                              CH),
+    ("snell-bend",             ["--snell-bend", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
+    ("no-snell",               ["--no-snell", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
     ("caustics",                 ["--caustics"],                                              CH),
     ("cam-submerge",             ["--cam-submerge", "3"],                                     CH),
-    ("no-light-rgb",             ["--no-light-rgb"],                                          CH),
+    ("no-light-rgb",           ["--no-light-rgb", "--demo-lamps", "--time", "0.30", "--cam-height", "-20", "--cam-yaw", "0", "--cam-pitch", "0"],  CH),
     ("no-ao",                    ["--no-ao"],                                                 CH),
     ("no-probe-shadow",          ["--no-probe-shadow"],                                       CH),
     ("no-probe-sun",             ["--no-probe-sun"],                                          CH),
@@ -128,7 +135,7 @@ CASES += [
     ("no-probe-bounce",          ["--no-probe-bounce"],                                       CH),
     ("probe-tap",                ["--probe-tap"],                                             CH),
     ("probe-ambient",            ["--probe-ambient"],                                         CH),
-    ("probe-noise",              ["--probe-noise"],                                           CH),
+    ("probe-noise",            ["--probe-noise", "--probe-fill", "0.65"],                CH),
     ("probe-fill-4",             ["--probe-fill", "4"],                                       CH),
     ("ambient-0.2",              ["--ambient", "0.2"],                                        CH),
     ("no-sky-tint",              ["--no-sky-tint"],                                           CH),
@@ -148,7 +155,7 @@ CASES += [
     ("no-foliage",               ["--no-foliage"],                                            CH),
     ("no-meadow",                ["--no-meadow"],                                             CH),
     ("no-tint",                  ["--no-tint"],                                               CH),
-    ("tint-strong",              ["--tint-strength", "2.0"],                                  CH),
+    ("tint-half",               ["--tint-strength", "0.5"],                                  CH),
     ("tint-balance",             ["--tint-balance"],                                          CH),
     ("foliage-rich",             ["--foliage-rich"],                                          CH),
     ("canopy-relief",            ["--canopy-relief"],                                         CH),
@@ -160,14 +167,14 @@ CASES += [
     ("no-leaf-cutout",           ["--no-leaf-cutout"],                                        CH),
     ("no-leaf-thin",             ["--no-leaf-thin"],                                          CH),
     ("no-tex-variation",         ["--no-tex-variation"],                                      CH),
-    ("no-glass",                 ["--no-glass"],                                              CH),
-    ("glass-reflect",            ["--glass-reflect"],                                         CH),
-    ("isolate-glass",            ["--isolate-glass"],                                         CH),
+    ("no-glass",               ["--no-glass", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
+    ("glass-reflect",          ["--glass-reflect", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
+    ("isolate-glass",          ["--isolate-glass", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
     ("no-shadows",               ["--no-shadows"],                                            CH),
     ("soft-shadows",             ["--soft-shadows"],                                          CH),
     ("soft-shadows-hq",          ["--soft-shadows", "--soft-shadow-hq"],                      CH),
-    ("sun-softness-narrow",      ["--sun-softness", "narrow"],                                CH),
-    ("sun-softness-wide",        ["--sun-softness", "wide"],                                  CH),
+    ("sun-softness-narrow",    ["--soft-shadows", "--sun-softness", "narrow"],           CH),
+    ("sun-softness-wide",      ["--soft-shadows", "--sun-softness", "wide"],             CH),
     ("no-distant-shadows",       ["--no-distant-shadows"],                                    CH),
     ("no-water-shadow-cut",      ["--no-water-shadow-cut"],                                   CH),
     ("no-terrain-shafts",        ["--no-terrain-shafts"],                                     CH),
@@ -178,7 +185,6 @@ CASES += [
     ("surface-debug-normals",    ["--surface-debug", "normals"],                              CH),
     ("legacy-lighting",          ["--legacy-lighting"],                                       CH),
     ("legacy-water",             ["--legacy-water"],                                          CH),
-    ("compact-shade-hit",        ["--compact-shade-hit"],                                     CH),
     ("no-full-march",            ["--no-full-march"],                                         CH),
     ("no-flat-secondary",        ["--no-flat-secondary"],                                     CH),
     ("grade-warm",               ["--grade", "warm"],                                         CH),
@@ -193,12 +199,21 @@ CASES += [
     ("max-lod-2",                ["--max-lod", "2"],                                          CH),
     ("no-fade",                  ["--no-fade"],                                               CH),
     ("no-shadow-share",          ["--no-shadow-share"],                                       CH),
-    ("no-offscreen-shadows",     ["--no-offscreen-shadows"],                                  CH),
-    ("demo-edits",               ["--demo-edits"],                                            CH),
-    ("demo-glass",               ["--demo-glass"],                                            CH),
-    ("demo-lamps",               ["--demo-lamps"],                                            CH),
+    ("no-offscreen-shadows",   ["--no-offscreen-shadows"],                               INERT),
+    ("demo-edits",             ["--demo-edits", "--cam-height", "14", "--cam-pitch", "-20"],  CH),
+    ("demo-glass",             ["--demo-glass", "--cam-height", "14", "--cam-pitch", "-20"],  CH),
+    ("demo-lamps",             ["--demo-lamps", "--time", "0.30", "--cam-height", "-20", "--cam-yaw", "0", "--cam-pitch", "0"],  CH),
     ("hud",                      ["--hud"],                                                   CH),
 ]
+
+# CHANGE arms allowed to be inert *in this scene*: the feature exists but the
+# baseline capture has nothing for it to touch. A zero-pixel arm there reports
+# inert-ok instead of suspect; if one starts moving pixels, the note is kept.
+INERT_WHY = {
+    "no-water-far": "no water beyond WATER_FAR_DIST (128 blocks) in the spawn capture",
+    "no-water-dark": "no water deeper than WATER_DARK_DEPTH (15 blocks) in the spawn capture",
+    "no-offscreen-shadows": "no off-screen occluders in the spawn capture",
+}
 
 # Perf sweep: (id, args). Wall median + gpu total are compared to the
 # baseline bench on the same machine, hi-z block second pass.
@@ -271,6 +286,7 @@ class Report:
         self.sections = []      # (title, [lines])
         self.fails = []         # (area, case, why)
         self.suspects = []
+        self.inert = []         # (area, case, why) -- expected no-op in this scene
         self.notes = []
 
     def add(self, title, lines):
@@ -296,6 +312,10 @@ class Report:
         if self.suspects:
             out.append(f"SUSPECT ({len(self.suspects)}):")
             for area, case, why in self.suspects:
+                out.append(f"  [{area}] {case}: {why}")
+        if self.inert:
+            out.append(f"EXPECTED-INERT ({len(self.inert)}):")
+            for area, case, why in self.inert:
                 out.append(f"  [{area}] {case}: {why}")
         if not self.fails and not self.suspects:
             out.append("ALL CHECKS PASSED")
@@ -518,6 +538,12 @@ def main():
         elif expect == CH and d["differ"] == 0:
             verdict = "SUSPECT"
             rep.suspects.append(("flag", cid, "arm moved zero pixels vs baseline"))
+        elif expect == INERT and d["differ"] == 0:
+            verdict = "inert-ok"
+            rep.inert.append(("flag", cid, INERT_WHY.get(cid, "no trigger in this scene")))
+        elif expect == INERT and d["differ"] != 0:
+            verdict = "ok"
+            rep.notes.append(f"flag {cid}: expected inert but moved {d['differ']} px -- the trigger exists after all; keep an eye on repeat runs")
         frac = 100.0 * d["differ"] / max(d["total"], 1)
         sweep.append(f"{cid:26s} {expect:6s} {verdict:6s} {d['differ']:6d} {d['mae']:7.4f} {d['max']:4d} "
                      f"{dtc:7.1f}  {frac:5.1f}% of frame; bbox {d['bbox'][:48]}")
@@ -546,6 +572,19 @@ def main():
                 rep.notes.append(f"perf: {cid} wall +{dw:.0f}% over baseline")
             print(f"perf {cid}: wall {blk.get('wall_ms', 0):.2f}ms ({dw:+.0f}%)", flush=True)
         rep.add("PERF SWEEP (bench-frames, hi-z off block)", plines)
+
+        # Thermal/order drift: re-run the untouched baseline bench once more at
+        # the end. A machine that heats up across the sweep makes late cases
+        # look slower; this number calibrates how much trust d_wall% deserves.
+        ok, code, bres, bout, berr = bench(binary, W, H, k.bench_frames, [], k, runlog)
+        if ok:
+            blk = next((b for b in bres["blocks"] if b.get("hiz") == "off"), bres["blocks"][0])
+            drift = 100.0 * (blk.get("wall_ms", 0) / max(base_perf.get("wall_ms", 1e-9), 1e-9) - 1.0)
+            rep.line("PERF SWEEP (bench-frames, hi-z off block)",
+                     f"drift: baseline re-run at end {blk.get('wall_ms', 0):.2f}ms "
+                     f"({drift:+.1f}% vs first) -- treat deltas within about ±{max(5.0, abs(drift)):.0f}% as order noise")
+            if drift > 15:
+                rep.notes.append(f"perf: baseline drifted +{drift:.0f}% across the sweep (thermals?) -- deltas smaller than that are not trustworthy")
 
     # ---------------- functional: journals, terrain, lookbook, cargo test --
     fj = runs / "journal.journal"

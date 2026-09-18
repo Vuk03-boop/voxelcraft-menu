@@ -27,3 +27,28 @@ prevented it. Keep entries to one line plus a pointer.
   deliberate (ADR 0002).
 - Standing — citing line numbers in docs/comments goes stale silently -> cite
   paths and symbols only. (`docs/README.md` rule 3)
+
+## Source-text pins can pass on narration
+
+`water_seen_through_a_pane_is_shaded_as_water` matched `WATER_BODY` and
+`schlick(` inside the search window that spanned a *comment* above the call
+site. The comment strip of 2026-09 flipped the test red while the code was
+byte-identical: for years the pin had been reading the comment, not the
+code. Source-text pins must anchor on the mechanism (route into the shared
+entry, then assert each load-bearing word where it actually lives), and the
+failure message should name *what* the invariant protects so the next
+refactor sees the intent.
+
+## A zero-pixel arm is a question, not an answer
+
+The first full run of `validation/upload_report.py` produced sixteen
+"zero-pixel" arms; every single one was the *scene* failing to reach the
+feature, not the feature being dead: a value clamped on the CPU (`tint`), a
+diagnostic that only applies to another diagnostic (`probe-noise` needs
+`--probe-fill`), an underwater-only path sampled from the air (`snell`), a
+window size that needs its switch on (`sun-softness` under `--soft-shadows`),
+and demo structures buried inside the hill 14 blocks in front of the default
+camera. Benchmark truth: pairing beats screenshots. Each arm now ships with
+the vantage that exercises it (the same catalogue `src/harness/vantage.rs`
+curates), or with an explicit "expected inert in this scene, because ..."
+note. Never green-light a feature from one camera.

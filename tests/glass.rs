@@ -146,19 +146,42 @@ fn water_seen_through_a_pane_is_shaded_as_water() {
         .expect("shade_glass still dispatches on a water hit");
     let arm = &src[at..at + src[at..].find("} else {").expect("the arm has an else")];
     assert!(
-        arm.contains("WATER_BODY"),
-        "the water arm must carry water's own body colour, or the sea through a pane is not          water. Arm was:
-{arm}"
-    );
-    assert!(
-        arm.contains("schlick("),
-        "the water arm must use water's Fresnel (`schlick`, at WATER_F0) and not glass's.          Arm was:
+        arm.contains("shade_water("),
+        "the water arm must route the hit into water's shared shading entry -- any local          rewrite of what 'water' means here is the divergence this test guards. Arm was:
 {arm}"
     );
     assert!(
         !arm.contains("shade_hit("),
         "a water hit through a pane must never go to shade_hit -- that is the flat blue cube          face this test exists to prevent. Arm was:
 {arm}"
+    );
+
+    // Pin the mechanism, not its narration: an earlier version of this test matched WATER_BODY
+    // and schlick( inside a *comment* above the call, and read green while the comments were
+    // the only place those names survived. The shared entry, the Fresnel compose, and water's
+    // own body colour are the load-bearing words; assert each where it actually lives.
+    let entry = src
+        .find("fn shade_water(")
+        .expect("shade_water is the shared water entry the arm must use");
+    let entry_body = &src[entry..src.len().min(entry + src[entry..].find("\nfn ").unwrap_or(src.len() - entry))];
+    assert!(
+        entry_body.contains("water_compose("),
+        "shade_water must hand off to water_compose -- the Fresnel compose that makes 'water'          mean the same thing from every ray. Entry was:
+{entry_body}"
+    );
+    let compose = src
+        .find("fn water_compose(")
+        .expect("water_compose is water's own Fresnel compose");
+    let compose_body =
+        &src[compose..src.len().min(compose + src[compose..].find("\nfn ").unwrap_or(src.len() - compose))];
+    assert!(
+        compose_body.contains("schlick("),
+        "water_compose must use water's own Fresnel (`schlick`, at WATER_F0) and not glass's.          Compose was:
+{compose_body}"
+    );
+    assert!(
+        src.contains("const WATER_BODY:"),
+        "water's own body colour is part of the shared path the arm now routes through"
     );
 }
 
