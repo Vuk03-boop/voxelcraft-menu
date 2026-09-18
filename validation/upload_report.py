@@ -73,6 +73,7 @@ CASES = [
     ("repaired-water",           ["--repaired-water"],                                        UN),
     ("no-soft-shadows",          ["--no-soft-shadows"],                                       UN),
     ("no-soft-shadow-hq",        ["--no-soft-shadow-hq"],                                     UN),
+    ("shadow-dist-220",           ["--shadow-dist", "220"],                                    UN),
     ("no-wind-sway",             ["--no-wind-sway"],                                          UN),
     ("no-water-look",            ["--no-water-look"],                                         UN),
     ("no-glass-reflect",         ["--no-glass-reflect"],                                      UN),
@@ -271,6 +272,12 @@ PERF_CASES = [
     ("water-sec-scale-4", ["--water-sec-scale", "4"]),
     ("no-light-rgb",      ["--no-light-rgb"]),
     ("no-flat-secondary", ["--no-flat-secondary"]),
+    # shadow reach experiment (was hardcoded 220.0) and the effects-lab
+    # toggles, benched at the vantage the demo builders are built for.
+    ("shadow-dist-128",   ["--shadow-dist", "128"]),
+    ("demo-glass-b",      ["--demo-glass", "--cam-height", "14", "--cam-pitch", "-20"]),
+    ("glass-reflect-b",   ["--demo-glass", "--glass-reflect",
+                           "--cam-height", "14", "--cam-pitch", "-20"]),
 ]
 
 # ---------------------------------------------------------------------------

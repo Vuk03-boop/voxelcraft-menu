@@ -67,6 +67,7 @@ pub struct Config {
     pub surface_debug: u32,
 
     pub sun_softness: u32,
+    pub shadow_dist: f32,
 
     pub snell_bend: bool,
 
@@ -305,7 +306,7 @@ impl Default for Config {
             isolate_glass: false,
             shadow_pass: true,
             legacy_lighting: false, legacy_water: false, soft_shadow_hq: false,
-            surface_debug: 0, sun_softness: 0,
+            surface_debug: 0, sun_softness: 0, shadow_dist: 220.0,
             snell_bend: false,
             shaft_texel: 4,
             tint_balance: false,
@@ -619,6 +620,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
             "--probe-noise" => cfg.probe_noise = true,
             "--march-stats" => cfg.march_stats = true,
             "--no-glass" => cfg.glass = false,
+            "--shadow-dist" => cfg.shadow_dist = next(&mut i).parse().unwrap_or(cfg.shadow_dist),
             "--no-distant-shadows" => cfg.distant_shadows = false,
             "--no-water-shadow-cut" => cfg.water_shadow_cut = false,
             "--no-leaf-thin" => cfg.leaf_thin = false,
@@ -846,6 +848,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                      --no-tex-variation       no per-block texture permutation: the pre-batch-36 frame
 \
                      --no-distant-shadows     no terrain shadow past the march: the pre-batch-37 frame
+                     --shadow-dist F          cap the sun-shadow march in blocks (default 220.0)
                      --no-leaf-cutout         leaves are solid cubes again: the pre-batch-38 frame
                      --no-flat-secondary      hits through water or glass take the nine-cell gather
                                               again: the pre-batch-45 frame
