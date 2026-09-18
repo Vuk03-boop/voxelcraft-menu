@@ -86,12 +86,13 @@ fn the_mask_is_exactly_the_named_bits() {
     );
 }
 
-fn quoted_names(src: &str, lead: &str, quote: &str) -> std::collections::BTreeSet<String> {
+fn quoted_names(src: &str, lead: &str, quote: &str, prefix: &str) -> std::collections::BTreeSet<String> {
     src.match_indices(lead)
-        .map(|(at, _)| {
+        .filter_map(|(at, _)| {
             let rest = &src[at + lead.len()..];
             let end = rest.find(quote).expect("name is terminated");
-            rest[..end].to_string()
+            let name = &rest[..end];
+            name.starts_with(prefix).then(|| name.to_string())
         })
         .collect()
 }
@@ -110,8 +111,8 @@ fn every_override_with_a_sibling_flag_is_wired_and_every_wired_name_exists() {
         );
         wgsl.push('\n');
     }
-    let overrides = quoted_names(&wgsl, "override SPEC_", ":");
-    let flags = quoted_names(&mod_rs, "pub const FLAG_HI_", ":");
+    let overrides = quoted_names(&wgsl, "override ", ":", "SPEC_");
+    let flags = quoted_names(&mod_rs, "pub const ", ":", "FLAG_HI_");
     for ov in &overrides {
         let sibling = ov.replacen("SPEC_", "FLAG_HI_", 1);
         if !flags.contains(&sibling) {
@@ -123,7 +124,7 @@ fn every_override_with_a_sibling_flag_is_wired_and_every_wired_name_exists() {
              wired to it, so the flag is dead by construction"
         );
     }
-    for wired in quoted_names(&mod_rs, "\"SPEC_", "\"") {
+    for wired in quoted_names(&mod_rs, "\"", "\"", "SPEC_") {
         assert!(
             overrides.contains(&wired),
             "mod.rs wires SPEC_{wired} but no shader declares the override -- a typo \
