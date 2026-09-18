@@ -78,6 +78,19 @@ cargo run --release -- --bench-frames 140 --width 1920 --height 1080
 cargo run --release -- --bench-terrain 96
 ```
 
+### Automated Performance & Regression Audit Suite
+To benchmark performance, compute pixel-level rendering differences across all engine flags against baseline, and generate an optimization audit report:
+
+```bash
+# Standard comprehensive audit (outputs to uploadme.txt)
+./run_audit.sh
+# or: python3 run_audit_suite.py
+
+# Quick audit for rapid turnaround
+python3 run_audit_suite.py --quick
+```
+The resulting `uploadme.txt` captures wall/GPU times, per-pass breakdowns, pixel difference statistics (diff %, MAE, max delta), invariant health, and subsystem cost rankings.
+
 The flag reference is the `--help` text, and it is the complete list. A
 persistent world is one file:
 

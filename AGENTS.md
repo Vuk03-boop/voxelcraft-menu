@@ -25,6 +25,7 @@ cargo bench --bench terrain        # worldgen timing
 cargo run --release -- --screenshot out.png        # one frame, time pinned to 0
 cargo run --release -- --diff a.png b.png --grid 8,8
 python3 validation/check_menu.py   # menu source guards (tree-sitter + python wgpu)
+python3 run_audit_suite.py         # flag-by-flag regression & diff audit -> uploadme.txt
 ```
 
 - `--help` is the complete flag list.

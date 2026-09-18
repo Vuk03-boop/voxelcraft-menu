@@ -31,3 +31,8 @@ gemini-code-*.py
 
 # Local fallback for windowed preferences; normal preference paths are outside the repo.
 /.voxelcraft-settings.conf
+
+# Audit artifacts and output
+/audit_artifacts/
+uploadme.txt
+
