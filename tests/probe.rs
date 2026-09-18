@@ -217,11 +217,10 @@ fn the_removal_is_gated_by_the_override_alone() {
         .collect();
     assert!(
         sites.len() >= 7,
-        "expected the removal to gate every site it claims -- blk_n, the corner tint, the amb          bilinear, both cheap branches, face_shade and the ambient floor -- found {}:
+        "expected the removal to gate every site it claims -- blk_n, the corner tint, the amb          bilinear, both cheap branches, face_shade and the ambient floor -- found {}:\n\
 {}",
         sites.len(),
-        sites.join("
-")
+        sites.join("\n")
     );
     for line in sites {
         assert!(

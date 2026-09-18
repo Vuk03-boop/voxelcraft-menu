@@ -388,7 +388,7 @@ into an RGBA16F field per shaded surface and multiplies `amb` by the result; the
 constant 1.0, so `amb * tap` is bit-exact for every finite `amb` and the whole output is a
 millisecond.
 
-**Batch 57 refilled that texture with a real bake and this row still holds**, because `--probe-tap` now implies `--probe-fill 1.0`: the field it samples is pinned back to a constant, so `amb * 1.0` is bit-exact for the reason it always was. The field itself is no longer 128^3 -- it is 64 x 384 x 64, six stacked slabs of the ambient cube -- and the tap's address arithmetic changed with it, so **re-measure before quoting this row's milliseconds against a future build.**
+**Batch 57 refilled that texture with a real bake and this row still holds**, because `--probe-tap` now implies `--probe-fill 1.0`: the field it samples is pinned back to a constant, so `amb * 1.0` is bit-exact for the reason it always was. The field itself is no longer 128^3 -- it was 64 x 384 x 64 at batch 57 and is 128 x 768 x 128 since L5 halved the spacing, six stacked slabs of the ambient cube -- and the tap's address arithmetic changed with it, so **re-measure before quoting this row's milliseconds against a future build.**
 
 **What it is for.** Roadmap L1 wants to replace the ambient floor and `face_shade` with a real
 directional, coloured, bounced irradiance field, baked at chunk build on sixteen idle cores. That
@@ -484,12 +484,12 @@ that ramp a `smoothstep` instead of a linear one.
 
 ### The normal bias, which is the difference between the feature working and half working
 
-The tap is taken at `hit + n * PROBE_SPACING * 0.5`, four blocks along the surface normal. A
+The tap is taken at `hit + n * PROBE_SPACING * 0.5`, two blocks along the surface normal. A
 surface sits on the boundary its own occluder defines -- the face of a cliff is the plane where
 the height field steps -- so the probe nearest an unbiased `hit` is as likely to be *inside* the
 terrain, where the cube has nothing to say, as in the air the face looks out into. Half a probe
-rather than a block, because the lattice is 8 blocks coarse and a one-block nudge leaves seven
-eighths of the weight where it was.
+rather than a block, because the lattice is 4 blocks coarse and a one-block nudge leaves three
+quarters of the weight where it was.
 
 ### The X/Z asymmetry stays, and the batch that tried to delete it is why
 
@@ -865,7 +865,7 @@ march already walks `STEPS` columns outward along each of `AZIMUTHS` azimuths an
 every one of their heights; what it did not do was keep them. The step loop is split in two so
 the whole profile of a ray exists before any step on it is weighted, and the sky a sample at
 step `si` can see is then a **maximum of slopes** over that profile rather than a second march.
-The chunk's 20,480 height samples stay 20,480; what the batch adds is arithmetic over an array
+The chunk's 81,920 height samples stay 81,920; what the batch adds is arithmetic over an array
 already in cache, and the bake goes **2743 to 3414 us, +671 and 1.24x**.
 
 The per-direction factor is `1 / (1 + t^2)`, **quoted from `cube_from_horizon`'s up axis rather
@@ -947,7 +947,7 @@ than re-derivable.
 
 **It is two constants selected by an override rather than a uniform**, which is
 `SPEC_LEAF_FILL`'s shape and is chosen for `GpuFrame`'s sake: that struct has no pads left,
-appending to it costs four words and five `offset_of!` asserts, and a value with two settings
+appending to it costs four words and seven `offset_of!` asserts, and a value with two settings
 does not need one. `FLAG_PROBE_SUN_HIGH` is therefore the **only bit in `SPEC_MASK` whose
 default is off** -- it is a sweep rung and not a control, because it reproduces no earlier build.
 

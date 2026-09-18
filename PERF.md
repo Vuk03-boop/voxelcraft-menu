@@ -274,7 +274,7 @@ has almost no shaded surface, so it prices *compiled code* rather than executed 
 
 **+671 us and 1.24x on the bake, for zero new height samples.** That pairing is the whole
 design: `ray_exposure` reads the `STEPS` column heights the horizon march has already taken and
-computes a maximum of slopes over them, so the chunk's **20,480 height samples stay 20,480** and
+computes a maximum of slopes over them, so the chunk's **81,920 height samples stay 81,920** and
 what is added is arithmetic over an array already in cache. Every other row moves by about 2%,
 which is run-to-run noise on this fixture and not attributable to the batch.
 
@@ -329,14 +329,15 @@ resident, and `resolve` is the only thing that is full. At the 160 blocks LOD 0 
 startup bill is roughly 200 chunks x 1.9 ms over sixteen threads -- under a tenth of a second,
 once.
 
-**The lever, if it ever needs one, is azimuths and not probes.** The bake is 64 probe columns x
-16 azimuths x 20 geometric steps = 20,480 `WorldGen::height` evaluations per chunk, and that
+**The lever, if it ever needs one, is azimuths and not probes.** The bake is 256 probe columns x
+16 azimuths x 20 geometric steps = 81,920 `WorldGen::height` evaluations per chunk, and that
 call is essentially the whole of the 1912 us; the per-probe integration is arithmetic on
 tangents already in hand. Cutting azimuths is linear and the basis has only four horizontal
 lobes to resolve.
 
 **VRAM: 12 MB**, one 64 x 384 x 64 `Rgba16Float` 3D texture, against the ~130 MB the rest of
-the engine uses and the 4 GB the card has. 24 KB of it per resident chunk.
+the engine uses and the 4 GB the card has -- **as measured at batch 57; L5's spacing halving
+has since made it 128 x 768 x 128, ~100.7 MB**. 24 KB of it per resident chunk.
 
 ## The ground bounce rides that bake rather than adding one (batch 58)
 
@@ -353,7 +354,7 @@ the engine uses and the 4 GB the card has. 24 KB of it per resident chunk.
 
 **+681 us, 1.36x the bake and +10.6% of the chunk build** -- against a roadmap entry that said
 to expect "several times that, because a DDA through voxels is not a heightfield step". It is
-not several times because it is not a DDA: the gather rides the same 20,480 samples the horizon
+not several times because it is not a DDA: the gather rides the same 81,920 samples the horizon
 march already takes and adds one `column_biome` lookup on every *other* radius plus a form
 factor. **The lever named in the section above is still the lever** -- azimuths, linear -- and
 `probe::ALBEDO_STRIDE` is a second one that touches only the bounce.
@@ -1298,8 +1299,10 @@ way**: 16 vantages, 0 pixels differing, identical file hashes for the shipping b
 feature works. It is not evidence it is wired up. A capture cannot tell a correct pretest from
 an inverted one from one that was never reached, because all three draw the identical picture --
 which is [`docs/harness.md`](docs/harness.md)'s own warning in its sharpest form, and the reason
-the checks that matter here are five source-level guards in `tests/pretest.rs` and one paired
-bench.
+the checks that mattered here were five source-level guards in `tests/pretest.rs` and one paired
+bench -- a file that has since been deleted along with the arm it guarded (`march.wgsl`'s
+comment records the batch-50 verdict: built, measured, thrown away, do not rebuild), so
+present-tense references to it are stale.
 
 ### The screen came first, and it says where this can pay at all
 
@@ -1822,7 +1825,8 @@ was that anything added there costs.
 
 **The field was 128^3 when everything below was measured.** Batch 57 made it 64 x 384 x 64 --
 six stacked slabs of the ambient cube -- and gave `--probe-tap` an implied `--probe-fill 1.0` so
-the diagnostic still samples a constant. The numbers here are the ones that were read; re-measure
+the diagnostic still samples a constant; L5's spacing halving has since made it
+128 x 768 x 128, ~100.7 MB. The numbers here are the ones that were read; re-measure
 before quoting them against a later build.
 
 **`--probe-tap` prices exactly one thing**: one hardware trilinear tap into a 128^3 RGBA16F field

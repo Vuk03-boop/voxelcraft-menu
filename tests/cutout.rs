@@ -100,8 +100,7 @@ fn hit_t_does_not_branch_on_the_cutout_override() {
         .lines()
         .map(|l| l.split("//").next().unwrap_or(""))
         .collect::<Vec<_>>()
-        .join("
-");
+        .join("\n");
     assert!(
         !code.contains("SPEC_LEAF_CUTOUT"),
         "hit_t branches on SPEC_LEAF_CUTOUT -- that costs the control its bit-exactness; \

@@ -92,13 +92,13 @@ fn the_control_gates_the_whole_term_and_not_just_a_part_of_it() {
         .expect("the term ends by mixing what it decided into the caller's colour");
     assert!(
         gate < fresnel && gate < mixed,
-        "the FLAG_SNELL gate must come before the Fresnel term and the final mix, or          `--no-snell` reverts only part of the feature. Body was:
+        "the FLAG_SNELL gate must come before the Fresnel term and the final mix, or          `--no-snell` reverts only part of the feature. Body was:\n\
 {code}"
     );
     let head = &code[gate..fresnel];
     assert!(
         head.contains("return above"),
-        "the gate has to return the caller's colour untouched, which is what makes the control          bit-exact rather than merely close. Body was:
+        "the gate has to return the caller's colour untouched, which is what makes the control          bit-exact rather than merely close. Body was:\n\
 {code}"
     );
 }
@@ -218,17 +218,17 @@ fn the_mirror_does_not_trace() {
     let code = term_body();
     assert!(
         !code.contains("trace_world"),
-        "the surface-from-below term should not trace: the traced mirror is worth a max channel          delta of 3 to 7 and cost 4 ms of `resolve` at `deep-water`, because it converges to          `underwater_body()`, which is free. Body was:
+        "the surface-from-below term should not trace: the traced mirror is worth a max channel          delta of 3 to 7 and cost 4 ms of `resolve` at `deep-water`, because it converges to          `underwater_body()`, which is free. Body was:\n\
 {code}"
     );
     assert!(
         !code.contains("shade_hit"),
-        "nothing here shades a hit any more; the mirror is the medium's own colour. Body          was:
+        "nothing here shades a hit any more; the mirror is the medium's own colour. Body          was:\n\
 {code}"
     );
     assert!(
         code.contains("underwater_body()"),
-        "the mirror is `underwater_body()` -- the limit the traced version converged to. Body          was:
+        "the mirror is `underwater_body()` -- the limit the traced version converged to. Body          was:\n\
 {code}"
     );
 }

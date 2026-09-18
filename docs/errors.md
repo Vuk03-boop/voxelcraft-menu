@@ -649,6 +649,15 @@ the sweep can only take a chunk the plan has not named for 240 frames, so it can
 from under a frame. `a_settled_plan_survives_further_updates` pins exactly that -- the plan and
 the chunks it names are a fixed point, the resident set is deliberately not.
 
+**DEFECT, recorded and not chased -- retreat unloads pop up to four times as hard as approach.**
+`cross_fade_removes_the_pop` measures flips per crossing in both directions, and ledger
+rows 100-101 recorded the asymmetry variance at 3.23x-3.67x before the bound was widened.
+`tests/lod_stream.rs` now asserts only `ratio < 4.0`, which is a widened bound standing in
+front of an unexplained mechanism, not a fix: nothing in the fade schedule explains why a
+retreating camera should lose uncovered subtrees faster than an approaching one gains them.
+The bound keeps the test green on the recorded variance; the ratio itself is the open
+question. Worth chasing only with a capture that shows *which* subtree pops on retreat.
+
 **REJECTED -- prefetching the whole ancestor chain of a selected chunk.** It generates chunks
 nothing draws, and since `last_needed` only tracks what the plan asked for, the unload pass
 deleted them on arrival -- a stationary camera interned ~16 chunks a frame forever, starving the

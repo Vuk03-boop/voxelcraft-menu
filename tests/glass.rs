@@ -231,17 +231,17 @@ fn water_seen_through_a_pane_is_shaded_as_water() {
     let arm = &src[at..at + src[at..].find("} else {").expect("the arm has an else")];
     assert!(
         arm.contains("WATER_BODY"),
-        "the water arm must carry water's own body colour, or the sea through a pane is not          water. Arm was:
+        "the water arm must carry water's own body colour, or the sea through a pane is not          water. Arm was:\n\
 {arm}"
     );
     assert!(
         arm.contains("schlick("),
-        "the water arm must use water's Fresnel (`schlick`, at WATER_F0) and not glass's.          Arm was:
+        "the water arm must use water's Fresnel (`schlick`, at WATER_F0) and not glass's.          Arm was:\n\
 {arm}"
     );
     assert!(
         !arm.contains("shade_hit("),
-        "a water hit through a pane must never go to shade_hit -- that is the flat blue cube          face this test exists to prevent. Arm was:
+        "a water hit through a pane must never go to shade_hit -- that is the flat blue cube          face this test exists to prevent. Arm was:\n\
 {arm}"
     );
 }

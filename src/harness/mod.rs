@@ -570,13 +570,13 @@ pub const IMPLIES: &[Implication] = &[
                 *control* reverts and says nothing about where the shipping frame's difference \
                 comes from. This row says it comes from the contents of the lattice and not \
                 from the code path around it -- the same question `--probe-fill` was invented \
-                for in batch 55, asked from the other side. **Batch 58 tried to add the twin of
-                this row for the ground bounce and could not**: the same A/B reads 0 pixels at
-                three of these four vantages and **2 at `terraces`, deterministically, at max
-                delta 1**, because the two sides are different *pipelines* and the bounce's
-                multiply lands inside `shade_hit`'s parenthesised sum where this one lands on a
-                scalar factor at the end. So whether a pinned-field A/B is bit-exact is a fact
-                about where the driver folds, not about the design -- see `errors.md`. This row
+                for in batch 55, asked from the other side. **Batch 58 tried to add the twin of\
+                this row for the ground bounce and could not**: the same A/B reads 0 pixels at\
+                three of these four vantages and **2 at `terraces`, deterministically, at max\
+                delta 1**, because the two sides are different *pipelines* and the bounce's\
+                multiply lands inside `shade_hit`'s parenthesised sum where this one lands on a\
+                scalar factor at the end. So whether a pinned-field A/B is bit-exact is a fact\
+                about where the driver folds, not about the design -- see `errors.md`. This row\
                 passing is luck that this row happens to have",
     },
     Implication {

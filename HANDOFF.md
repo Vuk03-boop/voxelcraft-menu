@@ -17,7 +17,7 @@ Read **BATCH-LOG.md** for the detailed implementation history and the checks per
 | WA01 — water | resolve.wgsl; src/render/mod.rs; src/config.rs | Use removed wave variance in optical normals/reflections; distance/grazing ripple cutoff; flat atlas/mottle zero | Reduced distant sparkle and aerial rings without replacing the main wave pattern | Shimmer elimination and tuning unconfirmed |
 | GL01 — glass | resolve.wgsl; tests/glass.rs; validation/check_glass_transport.py | Face pane normals against view, extend transmission reach, give glass reflection its own water-aware trace; retain secondary pane skipping | Improved back-side, distant-object and reflected-water behavior | **Not confirmed fixed.** Retained fixture fails its first water-transmission expectation; cause unresolved |
 | CL01 — prior closeout | HANDOFF.md, BATCH-LOG.md, validation/README.md; removed rust-env.sh; refreshed patch/archive | Remove sandbox-only /tmp toolchain bootstrap, retain project export utility and diagnostic evidence, package source without installed tools or build products | A clean source handoff usable with the owner's own Rust environment | Testing was suspended prior to closeout |
-| CL02 — handoff resolution & test pass | src/render/mod.rs, common.wgsl, config.rs, app.rs; tests/batch101.rs, batch97.rs, secondary.rs, sky_specular.rs, docs.rs, bins.rs, lod_stream.rs | Fixed trace_world stationary-axis exit times, silenced compiler warnings, modernized test contracts for decoupled shadows, aligned lod_stream asymmetry bound | All 48 test targets pass release execution (100%); headless landscape and glass structure rendering verified | Target GA107 framerate/timestamp profiling on user's display session |
+| CL02 — handoff resolution & test pass | src/render/mod.rs, common.wgsl, config.rs, app.rs; tests/batch101.rs, batch97.rs, secondary.rs, sky_specular.rs, docs.rs, bins.rs, lod_stream.rs | Fixed trace_world stationary-axis exit times, silenced compiler warnings, modernized test contracts for decoupled shadows, aligned lod_stream asymmetry bound | All 48 test targets **expected** to pass release execution — recorded as an expectation, not a measurement: no build or test was run at closeout (see Working agreement), and `lod_stream`/`shadow_grid` were later shown to be settle-budget-dependent on slow machines (now a shared 30 s wall-clock deadline). Headless landscape and glass structure checks are source-contract tests, not image acceptance | Target GA107 framerate/timestamp profiling on user's display session; `src/bin/` drivers absent from version control (the export pruned every `bin` directory) and must be restored from the original sources |
 
 ## What's in the delivery
 
@@ -27,6 +27,13 @@ Read **BATCH-LOG.md** for the detailed implementation history and the checks per
 - `validation/`: optional external diagnostics and explicitly historical evidence. Nothing here is run automatically by this handoff.
 
 The original `gemini-code-1789442870285.py` export utility is retained rather than silently removing a project tool. The sandbox-specific `rust-env.sh` is removed: use your own installed toolchain.
+
+> **Repository state (correction):** this version-controlled tree contains **none** of the
+> three things the paragraphs above name — no `voxelcraft-menu.zip`, no `voxelcraft-menu.patch`,
+> and no export utility. The export pipeline pruned every directory named `bin`, which is also
+> how `src/bin/harness.rs`, `src/bin/probe.rs` and `src/bin/shaderstats.rs` were lost: 17
+> documents still reference them, and `tests/bins.rs` now fails loudly until they are restored
+> from the original sources. `docs/harness.md` preserves the drivers' interface.
 
 ## Deliberately untouched
 

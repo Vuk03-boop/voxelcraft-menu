@@ -4,20 +4,33 @@
 //! for. Checked as literal substrings like the `docs.rs` class: refactor freely;
 //! rename and the pin tells you which docstring, run command or handoff to change
 //! with it.
+//!
+//! The trilogy is currently ABSENT: the dump pipeline that produced this repo's
+//! initial commit pruned every directory named `bin`, so the drivers never
+//! reached version control. These pins fail loudly in that state instead of
+//! passing vacuously, and come back to life unchanged the moment the files
+//! are restored.
 
 use std::path::Path;
 
-fn source(rel: &str) -> Option<String> {
+fn source(rel: &str) -> String {
     let p = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
-    if !p.exists() {
-        return None;
-    }
-    Some(std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{rel}: {e}")))
+    assert!(
+        p.exists(),
+        "{rel} is absent from this checkout. The export pipeline behind the initial \
+         commit pruned every directory named `bin`, so the documented driver trilogy \
+         (src/bin/harness.rs, src/bin/probe.rs, src/bin/shaderstats.rs) never reached \
+         version control. Restore them from the original sources -- or, if they are \
+         being retired, delete this pin and every command that names them, deliberately. \
+         A guard that passes while its subject is missing asserts nothing, which is \
+         exactly how the loss went unnoticed."
+    );
+    std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{rel}: {e}"))
 }
 
 #[test]
 fn harness_subcommands_are_the_documented_vocabulary() {
-    let Some(h) = source("src/bin/harness.rs") else { return; };
+    let h = source("src/bin/harness.rs");
     // The nine names `docs/harness.md` documents and the usage errors print.
     for sub in [
         "\"list\"",
@@ -36,7 +49,7 @@ fn harness_subcommands_are_the_documented_vocabulary() {
 
 #[test]
 fn harness_flags_are_the_documented_vocabulary() {
-    let Some(h) = source("src/bin/harness.rs") else { return; };
+    let h = source("src/bin/harness.rs");
     for flag in [
         "--vantage",
         "--only",
@@ -77,7 +90,7 @@ fn harness_flags_are_the_documented_vocabulary() {
 
 #[test]
 fn probe_names_the_features_the_loop_decides_on() {
-    let Some(p) = source("src/bin/probe.rs") else { return; };
+    let p = source("src/bin/probe.rs");
     for feature in [
         "EXPERIMENTAL_RAY_QUERY",
         "RAY_HIT_VERTEX_RETURN",
@@ -93,7 +106,7 @@ fn probe_names_the_features_the_loop_decides_on() {
 
 #[test]
 fn shaderstats_reads_the_shipping_module_through_render() {
-    let Some(s) = source("src/bin/shaderstats.rs") else { return; };
+    let s = source("src/bin/shaderstats.rs");
     assert!(
         s.contains("render::shader_source()"),
         "shaderstats must read the same concatenated module the game compiles"

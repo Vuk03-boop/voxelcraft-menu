@@ -329,7 +329,7 @@ const PROBE_SLABS: f32 = 6.0;
 // to be in the air the face looks out into. Stepping half a probe along the normal moves the
 // trilinear weight onto the open side, which is the same normal bias every probe-field renderer
 // applies and for the same reason. Half a probe rather than a block because the lattice is
-// 8 blocks coarse: a one-block nudge leaves seven eighths of the weight where it was.
+// 4 blocks coarse: a one-block nudge leaves three quarters of the weight where it was.
 const PROBE_NORMAL_BIAS: f32 = PROBE_SPACING * 0.5;
 
 // ---- batch 58: the ground bounce, which shares this tap rather than adding one ----

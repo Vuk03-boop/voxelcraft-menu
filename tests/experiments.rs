@@ -46,7 +46,7 @@ fn experimental_plan_is_not_a_uniform_only_update() {
 fn active_session_locks_shader_switches_and_defaults_preserve_them() {
     let mut p=Preferences::default();p.wind_sway=true;
     let mut m=Menu::new(p.clone());m.pause();m.open_settings(&p);m.experiments_locked=true;
-    for s in [Setting::IsolateGlass,Setting::ShadowPass,Setting::CompactShade,Setting::GlassReflect,Setting::WaterLook,Setting::WindSway,Setting::SoftShadows] {m.adjust(s,1);assert_eq!(m.draft,p);}
+    for s in [Setting::CompactShade,Setting::GlassReflect,Setting::WaterLook,Setting::WindSway,Setting::SoftShadows] {m.adjust(s,1);assert_eq!(m.draft,p);}
     m.adjust(Setting::Scale,-1);assert_ne!(m.draft.scale,p.scale);
     m.restore_defaults();assert!(m.draft.wind_sway);assert_eq!(m.draft.scale,Preferences::default().scale);
     m.cancel();assert_eq!(m.screen,Screen::Pause);

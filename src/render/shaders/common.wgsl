@@ -215,7 +215,7 @@ const PERM_D4: u32 = 2u;
 // Batch 57's sampler for it, and it is its own rather than `linear_samp` because the field's
 // three axes do not agree. X and Z are toroidal -- the lattice repeats every
 // `PROBE_DIM_XZ * PROBE_SPACING` blocks -- so a tap at the seam has to *filter across* it, and
-// `linear_samp` clamps, which would put an eight-block band of wrong shading on one plane
+// `linear_samp` clamps, which would put a four-block band of wrong shading on one plane
 // every 512 blocks. Y is not toroidal: `WORLD_HEIGHT / PROBE_SPACING` is exactly the field's
 // height, so clamping there is the world's own top and bottom. Repeat, clamp, repeat.
 @group(0) @binding(21) var probe_samp: sampler;
@@ -2177,37 +2177,14 @@ fn shadow_ray(ro: vec3<f32>, rd: vec3<f32>, max_dist: f32) -> bool {
 // beside it (the same shape `harness/vantage.rs` takes when it transliterates the
 // renderer instead of sharing with it).
 
-/// The tap cone's half-angle as a multiple of the sun's true angular radius
-/// ([`SUN_ANGLE`]). 6 is authored against a 20-block tree: a ~1.1-block fringe under
-/// it, ~0.3 under a tuft-height stem -- contact hardening for free, since the gap
-/// *is* the occluder distance. **Measured at batch 102's hardware round, the whole
-/// ladder, and the verdict is there is no sweet spot**: 6/10/24/48 give whole-frame
-/// MAE 0.180/0.250/0.398/0.546 with max delta pinned at 26 -- no setting is both
-/// visible and honest, so do not tune this; G5's gated redesign changes *where* the
-/// cone fires, not how wide it is.
+/// The penumbra's radius as a multiple of the sun's true angular radius
+/// ([`SUN_ANGLE`]). Since DS02 this scales the *screen-space* reconstruction in
+/// `shadow_radius`: the geometric tap cone it was authored for is gone, and with it
+/// the batch-102 ladder (6/10/24/48: whole-frame MAE 0.180/0.250/0.398/0.546, max
+/// delta pinned at 26) that found no sweet spot in firing more rays. The supplies are
+/// 1.0 / 1.5 / 3.0 (`--sun-softness narrow|normal|wide`); the number still trades
+/// fringe width against honesty, so it is still not a tuning knob.
 override SOFT_PENUMBRA: f32 = 1.5;
-
-/// Offset taps beyond the centre verdict. 3 at golden-angle phases plus the centre
-/// give five visibility levels (0, .25, .5, .75, 1) across the fringe, rotated
-/// per-surface so the steps read as grain rather than bands. **0 is the one-constant
-/// revert** (with the arm still armed: the fold below returns the centre bit and the
-/// loop never compiles a tap), each +1 is one third of the arm's cost again.
-/// **Measured: the arm's cost *is* this number -- scaffolding 0.073 ms, first tap
-/// +1.824, taps two and three +1.33 each, and the march length of a tap is noise
-/// against the fire.** A ray's bill is that it was fired; the lesson lives in
-/// `docs/lessons.md` and G5's gate is its application.
-override SOFT_TAPS: u32 = 3u;
-
-/// March budget for the offset taps when the centre tap found open sky -- **the one
-/// number this batch's cost story *was authored* to rest on, and measured not to.**
-/// A hit tells us where the blocker is and the cone budgets against it; a miss gives
-/// no such anchor, and three more taps launched to `max_dist` over open meadow was the
-/// profile the design feared. **The hardware round cut it 64 -> 8 and saved 7%**: the
-/// miss branch's length is not the bill, the tap existing is. Kept at 64 as the honest
-/// default -- the cap still costs nothing to state, and the G5 gate may make the miss
-/// branch rare enough that its budget stops mattering at all. Revert: 220.0 pays the
-/// full march and must show pixels to justify itself.
-const SOFT_MISS_DIST: f32 = 64.0;
 
 // `shadow_ray`, returning the blocker distance instead of the one bit: **a
 // transliteration, not a shared body** -- see the header above. -1.0 means open sky
@@ -2259,12 +2236,6 @@ fn shadow_ray_t(ro: vec3<f32>, rd: vec3<f32>, max_dist: f32) -> f32 {
     }
     return -1.0;
 }
-
-// The penumbral verdict: the centre bit plus `SOFT_TAPS` cone taps, evenly weighted.
-// The rotation hash is taken from the *surface*, quantised to half-blocks on
-// `hash_alpha`'s own lattice family (same primes, same negative-coordinate wrap), so
-// the fringe grain belongs to the ground: it does not crawl under a moving camera,
-// and it asks nothing of the TAA accumulation the probe suite pins the use of.
 
 
 // ---- water ----

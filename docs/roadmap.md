@@ -80,7 +80,6 @@ thing in this file that is about finished work.
 | **P-A**, the `f16` register park | **measured zero, closed** -- commits `f620c7e` through `4e48d71`, built and un-shipped in full. The designation never existed as an entry in this file (batch-93's steward finding); the question it answered **does** and is P14 above, where the close-out numbers are now filed |
 | **P-D**, the probe-bake cache | **spent** at commit `d4701a3` -- the bake is a pure function of world position (it marches `WorldGen::height`, never the voxels), so the window-scroll cache a chat queue planned against has no invalidation to spend itself on. Same steward finding: the designation never existed here |
 | **P-B**, and every further chat-queue letter | **burnt letters.** Their claims were never written into this tree, so there is nothing to point at -- and the rule that produced this row stands below: a designation must not be used in a status report before it is an entry. *Do not reuse `P-B` for something else*: a letter with two histories in chat resolves to neither |
-
 | **D1**, the pixel that flipped at `lattice` once in fifteen runs | shipped, batch 71 -- [`ledger`](ledger.md), [`shading`](shading.md). The mechanism was the probe lattice's own toroidal alias meeting the unload grace at teleport distance; the fix is an upload window derived from the alias distance, not a sort. The entry's two killed suspects and its methodology lesson stay in the ledger row |
 
 **What every rung had in common is the admission test for a new one**: it replaces a *constant*
@@ -1026,7 +1025,7 @@ near reach (the seam is the hybrid's characteristic failure, so that is where it
 `UPLOAD_REACH` claim is period arithmetic and stands unedited, D1b's window included), the
 two mirrored WGSL numbers with their `const _` pins. The tap is still one trilinear read;
 the bill is 8x the worker bake and 12.6 MB -> ~100.7 MB of the 3.9 GB of VRAM, which is
-96.5% free. Max 3D texture axis on this hardware is 16,384 against the 768-texel slab stack
+~94% free. Max 3D texture axis on this hardware is 16,384 against the 768-texel slab stack
 -- probed, not assumed, because this tree once rejected a design on a limit it had never
 queried.
 

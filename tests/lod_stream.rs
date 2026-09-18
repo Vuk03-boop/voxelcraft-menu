@@ -18,22 +18,14 @@ use voxelcraft::stream::ChunkManager;
 use voxelcraft::voxel::World;
 use voxelcraft::worldgen::WorldGen;
 
+mod support;
+use support::settle;
+
 const FRAME: Duration = Duration::from_micros(7400);
 
 fn mgr(cfg: LodConfig) -> (ChunkManager, World) {
     let gen = Arc::new(WorldGen::new(1337));
     (ChunkManager::new(cfg, gen), World::new())
-}
-
-fn settle(m: &mut ChunkManager, w: &mut World, cam: Vec3) {
-    for _ in 0..6000 {
-        m.update(cam, w, Duration::from_millis(50));
-        if m.is_settled(w) {
-            return;
-        }
-        std::thread::sleep(Duration::from_micros(200));
-    }
-    panic!("world never settled");
 }
 
 fn covering(render: &[RenderItem], p: Vec3) -> impl Iterator<Item = RenderItem> + '_ {
@@ -333,7 +325,9 @@ fn transitions_are_symmetric_and_never_uncover() {
             "  fade {cross_fade}: approach {fwd} flips / {fwd_lost} uncovered, \
              retreat {back} / {back_lost}, asymmetry {ratio:.2}x"
         );
-        // Ledger rows 100-101 recorded pre-existing asymmetry variance (3.23x - 3.67x); bound at 4.0x
+        // Ledger rows 100-101 recorded pre-existing asymmetry variance (3.23x - 3.67x); bound at
+        // 4.0x as a widened bound in front of an unexplained mechanism -- open defect, see
+        // docs/errors.md ("retreat unloads pop up to four times as hard as approach")
         assert!(
             ratio < 4.0,
             "retreat pops {ratio:.2}x as much as approach ({back} vs {fwd})"

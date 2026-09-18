@@ -385,7 +385,7 @@ fn the_composition_table_can_fail() {
 // ---------------------------------------------------------------- batch 24: the bench parser
 
 /// A real `--bench-frames` stdout, including the adapter banner that also begins with `gpu`.
-const BENCH_STDOUT: &str = "gpu: NVIDIA GeForce RTX 3050 Laptop GPU
+const BENCH_STDOUT: &str = r#"gpu: NVIDIA GeForce RTX 3050 Laptop GPU
 generating world...
   904 chunks in 0.4s
 
@@ -400,7 +400,7 @@ generating world...
   gpu   select 0.13  march 1.00  hiz 0.10  recover 0.02  march2 0.05  resolve 9.22  taa 0.46
   gpu   total 10.97ms
   pairs marched 76012  deferred 138236
-";
+"#;
 
 /// The bench parser reads both blocks, and is not fooled by the adapter banner.
 ///

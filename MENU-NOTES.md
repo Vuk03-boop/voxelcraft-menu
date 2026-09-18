@@ -11,7 +11,7 @@ The latest default lighting/water repairs and CLI-only softness, quality and dia
 - **Title:** Play, Settings, Quit. Full voxel Renderer creation and streaming updates are deferred until Play; the title itself still needs a supported GPU for presentation.
 - **Pause:** Resume, Settings, Quit. Escape pauses; Escape from the pause page resumes. Focus loss or minimization also pauses.
 - **Settings:** draft values are separate from applied preferences. Apply and save commits; Cancel / Back discards unapplied edits. Restore Defaults edits the draft, not the applied state.
-- **Render lab / Effects lab:** seven off-by-default shader switches, editable **only on the title before Play**. During a session they are locked; ordinary settings remain available. Restore Defaults during a session retains locked shader choices. Restart the application to change them on its title screen.
+- **Render lab / Effects lab:** five off-by-default shader switches (two in Render lab, three in Effects lab), editable **only on the title before Play**. The dedicated primary-shadow pass is not among them: it is mandatory and always on. During a session the experiments are locked; ordinary settings remain available. Restore Defaults during a session retains locked shader choices. Restart the application to change them on its title screen.
 - **Quit:** attempts the configured world-journal save first. Missing destination or a save failure presents Back and explicit Quit without saving. Preferences and world journals are separate files.
 
 Mouse targets and drawing use the same layout. Arrows/Tab navigate; Enter/Space activate; Left/Right adjust. Escape goes back. The menu consumes input before player movement, mouse look, hotbar or block-edit handling. Held input is cleared at pause/focus transitions and on resume.
@@ -23,10 +23,10 @@ Mouse targets and drawing use the same layout. Arrows/Tab navigate; Enter/Space 
 | Display | Render scale 25–100%, FOV 30–120°, VSync, TAA |
 | Graphics | Sun shadows, AO, water reflections, water transparency/refraction |
 | Appearance | Original/ACES tone curve, Natural/Warm/Cinema grade, grade strength, fog density, ambient light |
-| Render lab | Compact shade_hit schedule, separate glass pass, dedicated shadow pass, soft shadows |
+| Render lab | Compact shade_hit schedule, soft shadows |
 | Effects lab | Existing glass reflection, water look, wind sway |
 
-There are **13 ordinary settings and seven title-only experiments**. Scale steps by 5 percentage points; FOV by 5°; grade strength by 10%; fog by 0.0001; ambient by 0.01. Fog is bounded to 0–0.01 and ambient to 0–0.5. Valid arbitrary startup scales such as 0.8 are retained until adjusted.
+There are **13 ordinary settings and five title-only experiments**. Scale steps by 5 percentage points; FOV by 5°; grade strength by 10%; fog by 0.0001; ambient by 0.01. Fog is bounded to 0–0.01 and ambient to 0–0.5. Valid arbitrary startup scales such as 0.8 are retained until adjusted.
 
 The experimental glass/water/wind switches are **not fixes** for their known rendering defects. Existing soft shadows are costly. None of the three performance experiments has a measured target-GPU register/FPS improvement. The lab pages state these caveats; see the experiment notes before enabling them. Shadow-pass mode also isolates glass and water internally, without changing the separate-glass checkbox. Resolve timing includes the complete new pass family.
 
@@ -56,7 +56,7 @@ Location precedence:
 4. `$HOME/.config/voxelcraft/settings.conf`.
 5. Local `.voxelcraft-settings.conf` fallback.
 
-Version-3 `key=value` files reject unknown/duplicate keys, unsupported versions, invalid ranges and non-finite values. Reads are bounded to 64 KiB. Versions 1 and 2 remain readable. Version 1 loads with experiments off; version 2 preserves its previous experiments while the two new architecture options stay off. The new `isolate_glass` and `shadow_pass` keys require version 3. A malformed file is reported and is not overwritten automatically; an explicit Apply and save can replace it.
+Version-3 `key=value` files reject unknown/duplicate keys, unsupported versions, invalid ranges and non-finite values. Reads are bounded to 64 KiB. Versions 1 and 2 remain readable. Version 1 loads with experiments off; version 2 preserves its previous experiments, with the glass split off and the (now mandatory) shadow pass forced on. The new `isolate_glass` and `shadow_pass` keys require version 3 — and a version-3 file that says `shadow_pass=false` is still overridden to on at load, because the dedicated pass is mandatory (`Preferences::decode` forces it; see BATCH-LOG.md DS01). A malformed file is reported and is not overwritten automatically; an explicit Apply and save can replace it.
 
 Saving writes and synchronizes a sibling temporary file, then renames it. Errors leave preferences applied only for the session and display a warning with full details on stderr. This is not power-loss-proof: the parent directory is not fsynced, and concurrent processes use last-successful-writer behavior. Existing world-journal writes remain separate and are not made atomic by this change. `--no-exit-save` concerns the final snapshot; existing append-journal behavior remains unchanged.
 

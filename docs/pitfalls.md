@@ -111,9 +111,10 @@ here because they fire at the moment of an action, which is what this file is ke
 
 ## Lints
 
-**Clippy is clean and every `allow` carries a reason at its own site. Do not run `clippy --fix`
-blind on this tree** -- it is full of formulations that are load-bearing rather than incidental,
-and with no `.git` here there is no diff to review afterwards, so copy `src/` somewhere first.
+**Clippy is not clean -- an external audit counted 26 warnings -- and every `allow` carries a
+reason at its own site. Do not run `clippy --fix` blind on this tree** -- it is full of
+formulations that are load-bearing rather than incidental. (This row also predates the tree
+going under git at batch 27: the diff is reviewable now, and the rest of the warning stands.)
 
 Batch 22 ran it for the first time: 37 warnings, 23 in the library and 14 in the tests, with
 **no dead code and no bugs** among them -- all style. Seventeen rewrites were kept; the other

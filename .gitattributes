@@ -1,15 +1,22 @@
 # No end-of-line conversion, on anything.
 #
-# This tree is deliberately mixed: Cargo.toml, CLAUDE.md, PERF.md and README.md are CRLF,
-# while every .wgsl is LF and .rs and docs/ are LF with exactly three exceptions --
-# src/lib.rs, src/stats.rs and docs/batch-11-godrays.md, which have been CRLF since before
-# the tree went under version control. Check the file before anchoring an edit on a newline
-# rather than trusting the rule; batch 22 re-verified that this list is still complete and
-# still three. Git for Windows defaults to
-# core.autocrlf=true, which would normalise the LF files to CRLF in the working copy on the
-# next checkout and quietly rewrite most of the source tree. `-text` turns that off so the
-# bytes in a clone are the bytes that were committed. Diffs are unaffected.
+# This tree is mixed, but not by the map it used to carry. The comment below described
+# the pre-export working tree and is fiction here:
+#
+#     Cargo.toml, CLAUDE.md, PERF.md and README.md are CRLF, while every .wgsl is LF and
+#     .rs and docs/ are LF with exactly three exceptions -- src/lib.rs, src/stats.rs and
+#     docs/batch-11-godrays.md ...
+#
+# A post-export census found none of that holds: the export pipeline normalised most of
+# the tree to CRLF (117 files, including most of src/ and tests/ and all four names above),
+# while 53 arrived LF (src/menu.rs, src/settings.rs, Cargo.lock and the newer .md docs),
+# and docs/batch-11-godrays.md does not exist anywhere in this repository.
+# Batch 22's "re-verified, still three" claim could not have been run against this tree.
+# Do not trust any per-file ending claim -- including this one, if files are added after
+# the census -- check the file before anchoring an edit on a newline.
+#
+# Git for Windows defaults to core.autocrlf=true, which would normalise the LF files to
+# CRLF in the working copy on the next checkout and quietly rewrite much of the source
+# tree. `-text` turns that off so the bytes in a clone are the bytes that were committed.
+# Diffs are unaffected.
 * -text
-
-
-

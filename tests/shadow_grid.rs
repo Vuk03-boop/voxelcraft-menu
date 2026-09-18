@@ -19,7 +19,6 @@
 
 use glam::{IVec3, Vec3};
 use std::sync::Arc;
-use std::time::Duration;
 use voxelcraft::lod::{LodConfig, RenderItem};
 use voxelcraft::math::{Aabb, Frustum};
 use voxelcraft::render::{grid_origin, grid_span, partition_for_grid, GRID_X, GRID_Y, GRID_Z};
@@ -27,22 +26,14 @@ use voxelcraft::stream::ChunkManager;
 use voxelcraft::voxel::{ChunkKey, World};
 use voxelcraft::worldgen::WorldGen;
 
+mod support;
+use support::settle;
+
 /// The `offscreen-shadow` vantage's camera: 80 blocks up over the spawn column, which is where
 /// the defect is worth 28,128 pixels of 921,600. The yaw is what this file sweeps.
 const EYE: Vec3 = Vec3::new(0.0, 80.0, 0.0);
 const FOV_DEG: f32 = 70.0;
 const ASPECT: f32 = 1280.0 / 720.0;
-
-fn settle(m: &mut ChunkManager, w: &mut World, cam: Vec3) {
-    for _ in 0..6000 {
-        m.update(cam, w, Duration::from_millis(50));
-        if m.is_settled(w) {
-            return;
-        }
-        std::thread::sleep(Duration::from_micros(200));
-    }
-    panic!("world never settled");
-}
 
 /// `app.rs`'s camera basis, transcribed. A deliberate transliteration: what this file asserts
 /// is that the *frustum* does not reach the grid, so it has to build the same frustum the

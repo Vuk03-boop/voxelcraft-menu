@@ -4,7 +4,7 @@
 
 This is the visual-repair pass requested after the September 18 gameplay screenshots. **The changes are implemented, but their final appearance and cost still need a native gameplay retest.** No screenshot from the user's exact shoreline has been reproduced here.
 
-The three performance experiments remain independently selectable and off by default. The ordinary lighting/water repairs below are enabled by default; existing saved experimental preferences are preserved. No save/journal format or Frame/bind-group layout migration is needed.
+Compact shade_hit and the glass split remain independently selectable and off by default. The dedicated primary-shadow pass is mandatory and always on — `--no-shadow-pass` is retired and does not revert it (see BATCH-LOG.md DS01). The ordinary lighting/water repairs below are enabled by default; existing saved experimental preferences are preserved. No save/journal format or Frame/bind-group layout migration is needed.
 
 ## Implemented
 

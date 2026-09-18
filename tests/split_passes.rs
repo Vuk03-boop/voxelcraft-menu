@@ -30,7 +30,7 @@ fn new_options_are_title_only_and_defaults_preserve_locked_state() {
     let mut p=Preferences::default();p.shadow_pass=true;p.isolate_glass=true;
     let mut m=Menu::new(p.clone());m.open_settings(&p);m.page=Page::Experimental;
     assert_eq!(m.rows().len(),2);m.page=Page::Effects;assert_eq!(m.rows().len(),3);
-    m.experiments_locked=true;m.adjust(Setting::ShadowPass,1);m.adjust(Setting::IsolateGlass,1);
+    m.experiments_locked=true;m.adjust(Setting::CompactShade,1);m.adjust(Setting::SoftShadows,1);
     assert_eq!(m.draft,p);m.restore_defaults();assert!(m.draft.shadow_pass && m.draft.isolate_glass);
     let mut off=p.clone();off.shadow_pass=false;assert!(p.plan(&off).experiments);
 }

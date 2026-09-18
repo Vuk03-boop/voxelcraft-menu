@@ -9,10 +9,10 @@ pub enum Screen { Title, Playing, Pause, Settings, Loading, ConfirmQuit }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Page { Display, Graphics, Appearance, Experimental, Effects }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Setting { Scale, Fov, Vsync, Taa, Shadows, Ao, Reflections, Refraction, Tone, Grade, Strength, Fog, Ambient, CompactShade, IsolateGlass, ShadowPass, GlassReflect, WaterLook, WindSway, SoftShadows }
+pub enum Setting { Scale, Fov, Vsync, Taa, Shadows, Ao, Reflections, Refraction, Tone, Grade, Strength, Fog, Ambient, CompactShade, GlassReflect, WaterLook, WindSway, SoftShadows }
 impl Setting {
     pub fn experimental(self) -> bool {
-        matches!(self, Self::CompactShade | Self::IsolateGlass | Self::ShadowPass | Self::GlassReflect | Self::WaterLook | Self::WindSway | Self::SoftShadows)
+        matches!(self, Self::CompactShade | Self::GlassReflect | Self::WaterLook | Self::WindSway | Self::SoftShadows)
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -107,8 +107,6 @@ impl Menu {
         match s {
             Setting::Scale=>p.scale=((p.scale+d*0.05)*100.0).round().clamp(25.0,100.0)/100.0,
             Setting::Fov=>p.fov=(p.fov+d*5.0).clamp(30.0,120.0),
-            Setting::IsolateGlass=>p.isolate_glass=!p.isolate_glass,
-            Setting::ShadowPass=>p.shadow_pass=true,
             Setting::CompactShade=>p.compact_shade_hit=!p.compact_shade_hit,
             Setting::GlassReflect=>p.glass_reflect=!p.glass_reflect,
             Setting::WaterLook=>p.water_look=!p.water_look,

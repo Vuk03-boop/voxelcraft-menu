@@ -4,7 +4,7 @@
 
 **Current update:** [SURFACE-REPAIRS.md](SURFACE-REPAIRS.md) documents the subsequent authorized lighting/water fixes, current validation and new CLI controls. Repairs are on by default; the performance experiments below remain off by default. The original appearance is no longer the default control.
 
-**Experimental source, not a release-certified build.** The compact schedule, separate glass pass and dedicated primary-shadow pass are implemented, independently selectable and off by default. No register-count or FPS improvement has been established on the target GPU.
+**Experimental source, not a release-certified build.** The compact schedule and the separate glass pass are implemented, independently selectable and off by default. The dedicated primary-shadow pass is implemented but **no longer optional**: it is mandatory and always on (`--no-shadow-pass` is retired — see BATCH-LOG.md DS01/DS02). No register-count or FPS improvement has been established on the target GPU.
 
 ## How to enable them
 
@@ -13,9 +13,13 @@ Start the application, then open **Settings → Render lab** before Play:
 | Menu option | CLI enable | CLI revert |
 |---|---|---|
 | Compact shade_hit / A-B | `--compact-shade-hit` | `--no-compact-shade-hit` |
-| Separate glass pass | `--isolate-glass` | `--no-isolate-glass` |
-| Dedicated shadow pass | `--shadow-pass` | `--no-shadow-pass` |
 | Soft shadows / high cost | `--soft-shadows` | `--no-soft-shadows` |
+
+The dedicated shadow pass and the glass split are no longer menu rows. The shadow
+pass is mandatory (`--shadow-pass` is accepted as the default and `--no-shadow-pass`
+is retired — it warns and leaves the dedicated mask on), and the glass split follows
+it; `--isolate-glass` / `--no-isolate-glass` remain CLI-only compatibility switches.
+BATCH-LOG.md DS01 records the removal of both checkboxes from this page.
 
 Use **Apply and save**, return to the title, then Play. Shader options lock after a session starts; restart to change them. Ordinary display/appearance settings remain available while paused. Restore Defaults during gameplay preserves locked shader options; on the title it turns all experiments off.
 
@@ -25,9 +29,9 @@ The shadow option necessarily separates secondary shading too:
 
 | Separate glass | Shadow pass | Effective architecture |
 |---|---|---|
-| Off | Off | Combined resolve architecture, with the existing optional water-secondary prepass |
-| On | Off | Main resolve excludes glass; a separate dispatch shades glass |
-| Off | On | Primary shadow visibility → opaque/sky resolve → glass and water material dispatches |
+| Off | Off | **Retired — unreachable.** The shadow pass is mandatory, so the combined-resolve architecture cannot be built any more (row kept as the historical description) |
+| On | Off | **Retired — unreachable** for the same reason |
+| Off | On (default) | Primary shadow visibility → opaque/sky resolve → glass and water material dispatches |
 | On | On | Same pass topology as shadow-only; glass is not dispatched twice |
 
 These are full-screen **masked dispatch prototypes**, not sparse work lists. Empty-material scenes still pay classification/dispatch overhead. A scene without glass is not a meaningful glass-shading speed test.
@@ -52,7 +56,7 @@ With only glass separation enabled, main resolve **still contains water's second
 
 `SPEC_SHADOW_PASS` introduces a real `primary_shadow` compute dispatch **after all primary visibility work, including recovered marching**. It reconstructs the same hit point and foliage-facing normal, applies the same `0.02 * voxel_size` bias and primary shadow distance, and invokes the existing hard or soft local sun-shadow code.
 
-Visibility is stored as full-resolution **f32 values in a storage buffer**. Each in-bounds pixel is initialized, including sky, transparent pixels, heatmaps, unlit faces, disabled shadows and night. Fractional soft-shadow visibility is not quantized to eight bits.
+Visibility is stored as an **R16Float blocker-distance mask**, filtered through an Rg16Float intermediate into a sampled **R8Unorm final mask** (`src/render/shadow.rs`) — not the full-resolution f32 storage buffer this tier originally shipped. Each in-bounds pixel is initialized, including sky, transparent pixels, heatmaps, unlit faces, disabled shadows and night. Exactly **one** geometric shadow query is issued per eligible receiver (`shadow.wgsl`); penumbrae come from the depth-and-normal-aware screen-space filtering of DS02, not from extra rays.
 
 Cached primary lighting schedules are derived from their original inline schedules. Their only lighting substitution is `lit = primary_sun[pix]` in place of the local hard/soft ray evaluation. Distant-shadow handoff, cloud shading, skylight gating, probes and material calculations remain in their original relative places.
 
@@ -63,23 +67,23 @@ The new sequence is:
 ```
 light envelope → tile select → march
   → optional Hi-Z / recovery selection / recovered march
-  → primary local-shadow visibility (when enabled)
+  → primary shadow visibility (always on)
   → existing water-secondary legs (when enabled)
   → main resolve
   → separate glass resolve (when required)
-  → separate water resolve (shadow-pass mode)
+  → separate water resolve (always, as part of the mandatory shadow family)
   → TAA → presentation
 ```
 
-Sky and heatmap ownership remain with main resolve. Material writers finish before TAA. Both architecture options can be enabled together without duplicate glass writes.
+Sky and heatmap ownership remain with main resolve. Material writers finish before TAA. Glass separation can be enabled on top of the mandatory shadow pass without duplicate glass writes.
 
 ### Resources, startup and timings
 
 - New specialization bits: `FLAG_HI_ISOLATE_GLASS = 262144` and `FLAG_HI_SHADOW_PASS = 524288`; both participate in the cache mask and CLI/windowed frame mapping.
-- The visibility buffer occupies **4 bytes per internal pixel**: approximately **7.91 MiB at 1920×1080**, or **31.64 MiB at 3840×2160**, plus write/read traffic.
-- Group 3 carries that buffer. Existing group-0 layout and Frame ABI are unchanged; water's sampled/storage roles remain separated.
-- A four-byte placeholder is used while disabled. Full storage is allocated lazily when rendering requires it, recreated/rebound for changed internal dimensions, and released back to a placeholder when no longer requested. VRAM estimates include it.
-- Only requested glass/water/shadow pipelines are created. Specialized startup pipelines now derive from actual FrameParams, not an all-bits mask that would compile unrequested effects. The existing emitter-sibling warmup remains.
+- The three mask textures occupy **7 bytes per internal pixel** (`Targets::bytes()` in `src/render/shadow.rs`): approximately **13.84 MiB at 1920×1080**, or **55.4 MiB at 3840×2160**, plus write/read traffic. The original single-buffer f32 design this section described was 4 bytes per pixel and is retired.
+- Group 3 carries those masks. Existing group-0 layout and Frame ABI are unchanged; water's sampled/storage roles remain separated.
+- The masks are recreated/rebound for changed internal dimensions. VRAM estimates include them; the pass is mandatory, so there is no disabled-placeholder case any more.
+- Shadow pipelines are always created (the pass is mandatory); only the optional glass/water lanes follow their flags. Specialized startup pipelines now derive from actual FrameParams, not an all-bits mask that would compile unrequested effects. The existing emitter-sibling warmup remains.
 - **The existing `resolve` timing column measures the entire family**, not just the cheaper opaque dispatch. Query indices 8/9 bracket the new passes and their intervening work. Existing GPU-total and benchmark columns therefore do not hide work moved elsewhere. Debug labels distinguish the passes for vendor profilers; separate numerical per-pass timing columns were not added.
 
 Allocation/device errors retain the renderer's existing fatal policy; no transactional GPU rollback is implemented. Compilation is synchronous and selected combinations can take time or exhaust resources. **Use a copied test world.** If a saved combination cannot compile, restart to the lightweight title and restore defaults before Play, or use the negative CLI flags.
@@ -114,16 +118,18 @@ cargo test --release --test batch102 --test water --test probe
 cargo run --release
 ```
 
-Headless flags work independently of saved preferences. Keep seed, camera, time, resolution, edits and all unrelated settings fixed. Use representative scenes containing glass and water, not only the default terrain view. Example comparison commands (add identical scene/journal options to each):
+Headless flags work independently of saved preferences. Keep seed, camera, time, resolution, edits and all unrelated settings fixed. Use representative scenes containing glass and water, not only the default terrain view. Example comparison commands (add identical scene/journal options to each). The
+dedicated shadow pass is on in **every** arm — it is the shipping architecture, and
+`--no-shadow-pass` would only print its retirement warning — so the control/split
+pair below differs only in the glass split:
 
 ```bash
-cargo run --release -- --bench-frames 240 --no-isolate-glass --no-shadow-pass
-cargo run --release -- --bench-frames 240 --isolate-glass --no-shadow-pass
-cargo run --release -- --bench-frames 240 --shadow-pass
-cargo run --release -- --bench-frames 240 --compact-shade-hit --shadow-pass --soft-shadows
+cargo run --release -- --bench-frames 240 --no-isolate-glass
+cargo run --release -- --bench-frames 240 --isolate-glass
+cargo run --release -- --bench-frames 240 --compact-shade-hit --soft-shadows
 
-cargo run --release -- --screenshot control.png --no-isolate-glass --no-shadow-pass
-cargo run --release -- --screenshot split.png --isolate-glass --shadow-pass
+cargo run --release -- --screenshot control.png --no-isolate-glass
+cargo run --release -- --screenshot split.png --isolate-glass
 ```
 
 Alternate warmed A/B runs; compare **resolve-family time, GPU total and wall time**. For the soft-shadow comparison, enable soft shadows on both control and split runs. Use a vendor profiler to inspect the labeled main/shadow/glass/water pipelines, registers, spills, shared memory and occupancy. The full repository's `shaderstats` tool would need matching new layouts/overrides; its source was not included in this text export.

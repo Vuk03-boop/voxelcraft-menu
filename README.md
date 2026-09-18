@@ -61,12 +61,13 @@ anti-aliasing, **Esc** pause/resume. Choose **Play** on the title screen to begi
 
 The menu has **Display, Graphics, Appearance, Render lab and Effects lab** pages with Apply,
 Cancel and Restore Defaults. Gameplay and weather pause while menus are open.
-The seven shader experiments are **off by default and title-only**; they lock after
-Play. Compact shade_hit, separate glass shading and a dedicated primary-shadow pass
-are implemented as unmeasured performance A/Bs. The glass-reflection/water-look/wind
-and soft-shadow switches expose existing experimental paths, not new fixes.
-Try `--isolate-glass` and/or `--shadow-pass` (revert with their `--no-` counterparts).
-Shadow-pass mode also isolates glass and water; resolve timing includes the whole family.
+Five shader experiments are **off by default and title-only**; they lock after
+Play. Compact shade_hit and the soft-shadow switch are unmeasured performance A/Bs;
+the glass-reflection/water-look/wind switches expose existing experimental paths,
+not new fixes. The dedicated primary-shadow pass is no longer an experiment: it is
+mandatory and always on, and it isolates glass and water with it (resolve timing
+includes the whole family). `--no-isolate-glass` reverts the glass split;
+`--no-shadow-pass` is retired — it warns and leaves the dedicated mask on.
 See [MENU-NOTES.md](MENU-NOTES.md) for usage and [EXPERIMENTS.md](EXPERIMENTS.md)
 for the architecture, measured correctness checks and native-validation limits.
 F4/F7 share the applied settings state; hotkey changes are session-only until you
@@ -93,6 +94,11 @@ cargo run --release --bin harness -- capture
 The last one is the measurement fixture. It holds the named vantages the documentation
 quotes, the crops scored at each, and the metrics, so a capture taken today is comparable to
 one taken six months ago. `harness list` prints the set and `harness --help` the subcommands.
+
+> **Repository caveat:** the `harness`, `probe` and `shaderstats` drivers (`src/bin/`)
+> are documented but **absent from version control** — the export pipeline behind the
+> initial commit pruned every directory named `bin`. Restore them from the original
+> sources before running the commands above; `tests/bins.rs` fails loudly until then.
 
 **How to measure so the result means anything** -- why a bench has to be paired and
 order-alternating, what each metric is sensitive to, and how the converged reference reports

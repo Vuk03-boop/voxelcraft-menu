@@ -980,7 +980,7 @@ pub const FLAG_SKY_TINT: u32 = 2147483648;
 // is a passenger in `GpuFrame` -- uploaded, never looked at. So a control of that shape needs a
 // bit in the *key* and none in the uniform, and this word is CPU-side only: it is never written
 // into `GpuFrame`, which therefore does not grow, keeps its 16-byte `mat4x4` alignment, needs no
-// invented pad and invalidates none of the five `offset_of!` asserts. Widening `flags` itself to
+// invented pad and invalidates none of the seven `offset_of!` asserts. Widening `flags` itself to
 // `u64` would have touched seventeen call sites and every `FLAG_` constant to buy the same thing.
 //
 // **The rule this buys, and it is load-bearing: a bit here must be one no shader reads.** There
@@ -1330,8 +1330,8 @@ struct GpuFrame {
 // control the whole look goal is judged against.
 const _: () = assert!(std::mem::size_of::<GpuFrame>() == 352);
 // The size alone cannot catch a field inserted in the wrong place -- swap two and it is
-// unchanged -- and nothing else compares this struct to the WGSL one. These three pin the
-// two seams batches 10 and 11 actually moved.
+// unchanged -- and nothing else compares this struct to the WGSL one. These seven pin the
+// seams the six append batches actually moved.
 const _: () = assert!(std::mem::offset_of!(GpuFrame, cloud_cover) == 192);
 const _: () = assert!(std::mem::offset_of!(GpuFrame, godray_strength) == 208);
 const _: () = assert!(std::mem::offset_of!(GpuFrame, tint_strength) == 224);
@@ -1824,7 +1824,7 @@ pub struct Renderer {
     /// **Repeat in U and W, clamp in V**, which is the sampler encoding the field's shape:
     /// X and Z are toroidal so a tap at the lattice seam filters across it instead of
     /// clamping, and Y spans the world exactly so its edges are the world's own. The shared
-    /// `linear_sampler` clamps on every axis and would put an eight-block band of wrong
+    /// `linear_sampler` clamps on every axis and would put a four-block band of wrong
     /// shading on one plane every 512 blocks.
     probe_sampler: wgpu::Sampler,
     /// `--probe-fill` was given, so the field is a constant and no bake may overwrite it.
@@ -3505,7 +3505,7 @@ fn make_atlas(
 /// reads across that boundary with nothing to interpolate between but two values of the same
 /// function. That is roadmap P5b answered by construction for this field -- the apron the
 /// roadmap planned exists only because a chunk-local grid has edges, and this one has none.
-/// Y is exact rather than toroidal because `WORLD_HEIGHT / SPACING` is 64 on the nose, so the
+/// Y is exact rather than toroidal because `WORLD_HEIGHT / SPACING` is 128 on the nose, so the
 /// field covers the world's whole column and the sampler clamps at the top and bottom of it.
 ///
 /// **The 512-block period is safe because LOD 0 reaches 160 blocks.** `LodConfig::factor` is
@@ -3513,7 +3513,7 @@ fn make_atlas(
 /// same texels are 512 blocks apart and cannot both be in front of the camera. What they can
 /// both be is *resident*, for as long as the 240-frame unload grace lasts after a fast
 /// traverse, and the loser of that race gets one stale cube until it is rebuilt -- a shading
-/// factor, eight blocks wide, on a chunk that is behind the camera.
+/// factor, four blocks wide, on a chunk that is behind the camera.
 ///
 /// **It is created holding 1.0**, and the field stores occlusion rather than shading for
 /// exactly that reason. `shade_hit` multiplies `face_shade` by the tap, so a texel no bake has
@@ -3670,7 +3670,7 @@ fn storage_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
     }
 }
 
-/// The one module every compute pass is compiled from: `common.wgsl` and the four pass
+/// The one module every compute pass is compiled from: `common.wgsl` and the six pass
 /// files, concatenated in this order and no other.
 ///
 /// It is public and it is the *only* copy because `--bin shaderstats` compiles the same
@@ -4057,7 +4057,6 @@ fn make_spec(
         ("SHADOW_RADIUS_LIMIT", if spec_hi & FLAG_HI_SOFT_HQ != 0 { 8.0 } else { 4.0 }),
         ("SPEC_LIGHTING_REPAIR", if spec_hi & FLAG_HI_LEGACY_LIGHTING == 0 { 1.0 } else { 0.0 }),
         ("SPEC_WATER_REPAIR", if spec_hi & FLAG_HI_LEGACY_WATER == 0 { 1.0 } else { 0.0 }),
-        ("SOFT_TAPS", if spec_hi & FLAG_HI_SOFT_HQ != 0 { 7.0 } else { 3.0 }),
         ("SOFT_PENUMBRA", if spec_hi & FLAG_HI_SUN_NARROW != 0 { 1.0 } else if spec_hi & FLAG_HI_SUN_WIDE != 0 { 3.0 } else { 1.5 }),
         ("SURFACE_DEBUG", ((spec_hi >> 23) & 7) as f64),
         ("WATER_SEC_SHIFT", water_sec_shift as f64),

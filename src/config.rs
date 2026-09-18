@@ -1189,10 +1189,10 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                      --diff A.png B.png       compare two captures: MAE, differ count, bbox as\n\
                                               crop fractions; --grid GX,GY adds a per-cell table\n\
                                               with the peak cell marked (needs no renderer)\n\
-                     --crop X0,Y0,X1,Y1        with --diff: fractions of the image to compare
+                     --crop X0,Y0,X1,Y1        with --diff: fractions of the image to compare\n\
                      --no-shore-wet           dry sand at the waterline (reverts batch 75's band)\n\
                      --no-shore-foam          no foam over shallow columns (reverts batch 75's mottle)\n\
-                     --no-water-sec           full-res traced water legs (reverts batch 81's
+                     --no-water-sec           full-res traced water legs (reverts batch 81's\n\
                                               half-res diagnostic: P12's measurement arm)\n\
                      --water-sec-scale N      water legs per NxN block: 1, 2 (default) or 4\n\
                      --cloud-patch P         G1: cumulus arrive in banks; P swings the coverage\n\
@@ -1255,61 +1255,61 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                      --cloud-height F         internal Y of the deck (default 448)\n\
                      --cloud-scale F          blocks per base cloud octave (default 320)\n\
                      --cloud-speed F          blocks per second of drift (default 3)\n\
-                     --godray-strength F      shadowing of the haze's sun lobe (0 = off)
+                     --godray-strength F      shadowing of the haze's sun lobe (0 = off)\n\
 \
-                     --godray-steps N         samples along the view ray (default 4)
+                     --godray-steps N         samples along the view ray (default 4)\n\
 \
-                     --godray-dist F          how far the shaft samples spread (default 4096)
+                     --godray-dist F          how far the shaft samples spread (default 4096)\n\
 \
-                     --cloud-shadow F         sun the deck takes off the ground (0 = off)
+                     --cloud-shadow F         sun the deck takes off the ground (0 = off)\n\
 \
-                     --no-terrain-shafts      no terrain-cast shafts: pair with the next for pre-batch-35
+                     --no-terrain-shafts      no terrain-cast shafts: pair with the next for pre-batch-35\n\
 \
-                     --no-tex-variation       no per-block texture permutation: the pre-batch-36 frame
+                     --no-tex-variation       no per-block texture permutation: the pre-batch-36 frame\n\
 \
-                     --no-distant-shadows     no terrain shadow past the march: the pre-batch-37 frame
-                     --no-leaf-cutout         leaves are solid cubes again: the pre-batch-38 frame
-                     --no-flat-secondary      hits through water or glass take the nine-cell gather
-                                              again: the pre-batch-45 frame
-                     --no-water-far           a submerged camera tests chunks to the full view
-                                              distance again: the pre-batch-48 frame
-                     --no-water-dark          a submerged tile below the sky flood's reach looks
-                                              as far as --no-water-far lets it: the pre-batch-53 frame
-                     --no-snell               a submerged eye sees through the water surface at every
-                                              angle again: the pre-batch-54 frame
-                     --probe-tap              take one trilinear tap into the probe field per shaded
-                                              surface, on top of the shading. Implies --probe-fill 1.0,
-                                              so it is bit-exact and reports only a millisecond
-                     --probe-ambient          that field REPLACES the ambient, and the terms it
-                                              makes redundant leave the shader. Implies --probe-tap.
-                                              The frame is wrong on purpose: a build to measure
-                     --no-probe-cube          take the directional shading factor from face_shade's
-                                              per-normal constants again, not from the baked cube
-                     --no-probe-bounce        take the ambient floor from one authored constant
-                                              again, not from the baked ground bounce
-                     --no-light-rgb           read block light as one level wearing one warm
-                                              tint again: the pre-batch-59 frame
-                     --no-sky-tint            take the ambient's sky colour from one authored
-                                              constant again, not from the sky model: the
-                                              pre-batch-63 frame
-                     --no-sky-specular        make every opaque surface perfectly diffuse
-                                              again, with no Fresnel-weighted reflection of
-                                              the sky: the pre-batch-65 frame
-                     --no-full-march          stop every ray at a mixed-full chunk's face
-                                              again, water-ignoring legs included: the
-                                              pre-batch-72 frame
-                     --probe-fill F           pin the probe field to the constant F and switch the
-                                              bake off. At 1.0 the cube is a no-op; at anything
-                                              else the frame must move, or nothing is wired up
-                     --probe-noise            fill the probe field per texel instead of uniformly
-                     --march-stats            print march's DDA steps and pair counts, and write
-                                              the heatmap rather than the frame. Not a timing mode
-                     --no-glass               glass is an opaque cube again. NOT a pure revert: the
-                                              light flood still runs through a pane
-                     --no-water-shadow-cut    a sea floor marches its own shadow 48 blocks again
-                                              instead of 16: the pre-batch-41 frame
-                     --no-leaf-thin           a canopy keeps 0.72 of each leaf block instead of
-                                              0.62: the pre-batch-43 frame
+                     --no-distant-shadows     no terrain shadow past the march: the pre-batch-37 frame\n\
+                     --no-leaf-cutout         leaves are solid cubes again: the pre-batch-38 frame\n\
+                     --no-flat-secondary      hits through water or glass take the nine-cell gather\n\
+                                              again: the pre-batch-45 frame\n\
+                     --no-water-far           a submerged camera tests chunks to the full view\n\
+                                              distance again: the pre-batch-48 frame\n\
+                     --no-water-dark          a submerged tile below the sky flood's reach looks\n\
+                                              as far as --no-water-far lets it: the pre-batch-53 frame\n\
+                     --no-snell               a submerged eye sees through the water surface at every\n\
+                                              angle again: the pre-batch-54 frame\n\
+                     --probe-tap              take one trilinear tap into the probe field per shaded\n\
+                                              surface, on top of the shading. Implies --probe-fill 1.0,\n\
+                                              so it is bit-exact and reports only a millisecond\n\
+                     --probe-ambient          that field REPLACES the ambient, and the terms it\n\
+                                              makes redundant leave the shader. Implies --probe-tap.\n\
+                                              The frame is wrong on purpose: a build to measure\n\
+                     --no-probe-cube          take the directional shading factor from face_shade's\n\
+                                              per-normal constants again, not from the baked cube\n\
+                     --no-probe-bounce        take the ambient floor from one authored constant\n\
+                                              again, not from the baked ground bounce\n\
+                     --no-light-rgb           read block light as one level wearing one warm\n\
+                                              tint again: the pre-batch-59 frame\n\
+                     --no-sky-tint            take the ambient's sky colour from one authored\n\
+                                              constant again, not from the sky model: the\n\
+                                              pre-batch-63 frame\n\
+                     --no-sky-specular        make every opaque surface perfectly diffuse\n\
+                                              again, with no Fresnel-weighted reflection of\n\
+                                              the sky: the pre-batch-65 frame\n\
+                     --no-full-march          stop every ray at a mixed-full chunk's face\n\
+                                              again, water-ignoring legs included: the\n\
+                                              pre-batch-72 frame\n\
+                     --probe-fill F           pin the probe field to the constant F and switch the\n\
+                                              bake off. At 1.0 the cube is a no-op; at anything\n\
+                                              else the frame must move, or nothing is wired up\n\
+                     --probe-noise            fill the probe field per texel instead of uniformly\n\
+                     --march-stats            print march's DDA steps and pair counts, and write\n\
+                                              the heatmap rather than the frame. Not a timing mode\n\
+                     --no-glass               glass is an opaque cube again. NOT a pure revert: the\n\
+                                              light flood still runs through a pane\n\
+                     --no-water-shadow-cut    a sea floor marches its own shadow 48 blocks again\n\
+                                              instead of 16: the pre-batch-41 frame\n\
+                     --no-leaf-thin           a canopy keeps 0.72 of each leaf block instead of\n\
+                                              0.62: the pre-batch-43 frame\n\
 \
                      --no-vsync --no-shadows --no-ao --no-physics --no-hiz --no-taa\n\
                      --no-idle-repaint        render every frame even when nothing moved\n\

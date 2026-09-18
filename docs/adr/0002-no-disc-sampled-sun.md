@@ -111,7 +111,9 @@ All at `default` unless named, all against `voxelcraft-pre61.exe`:
    **14,348 at `canopy`**, where the trees the heightfield envelope cannot see stop casting.
 3. **The shaft envelope is already a better horizon map than a probe bake would be**, which is
    what killed this entry's *original* plan before the disc was built. Both read
-   `WorldGen::height`; the envelope wins on every axis — `TEXEL = 4` blocks against `SPACING = 8`,
+   `WorldGen::height`; the envelope won on every axis — `TEXEL = 4` blocks against the `SPACING = 8` the lattice
+   then used (L5 later halved the spacing to 4, so this particular axis is now a tie; the
+   azimuth, reach and softness points stand),
    the sun's exact azimuth against 16 bins of 22.5 degrees, 1024 blocks of reach against
    `REACH = 192`, and it is already soft. R5 had proposed storing `probe.rs`'s discarded
    `tan_h[16]` and reading it for the sun; that would have been a coarser second copy of something

@@ -3,10 +3,12 @@
 //! re-shoots the lookbook (now four views by fourteen combos) and takes the arm's cost
 //! at the `--grass-dense` station, the bench the round before it standardised.
 //!
-//! What this file is really pinning is the *cost story*: the arm is three extra rays
-//! through the occlusion grid, so every number that bounds those rays (tap count, cone
-//! aperture, miss-budget) is pinned as a literal next to its revert. A change to any
-//! of them is a look or frame-time decision that must update this file deliberately.
+//! What this file is really pinning is the *cost story*. DS01/DS02 replaced the
+//! three-tap cone with one geometric ray per eligible receiver plus a screen-space
+//! bilateral reconstruction, and the dead `SOFT_TAPS`/`SOFT_MISS_DIST` overrides went
+//! with it; what is pinned here is the one-ray shape of `primary_shadow` and the pass
+//! family around it. A change to any of that is a look or frame-time decision that
+//! must update this file deliberately.
 
 mod support;
 use voxelcraft::config::{parse_from, Config};

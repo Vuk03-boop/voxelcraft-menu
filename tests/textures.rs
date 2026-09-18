@@ -453,8 +453,7 @@ fn frame_time_is_read_only_by_the_two_animation_phases() {
             None => l,
         })
         .collect::<Vec<_>>()
-        .join("
-");
+        .join("\n");
 
     const READERS: [&str; 2] = [" * frame.wave_speed", " * frame.cloud_speed"];
     let mut seen = [0usize; READERS.len()];
