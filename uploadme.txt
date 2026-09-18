@@ -1,6 +1,6 @@
 
 ===== ENVIRONMENT =====
-date (UTC):   2026-09-18 13:53:22
+date (UTC):   2026-09-18 16:58:43
 host:         Windows-10-10.0.26200-SP0
 machine:      AMD64, cpus: 16
 python:       3.11.9
@@ -9,202 +9,211 @@ run dir:      C:\Users\Vuk Trifunovic\Downloads\Voxels\uploadme_runs
 capture:      640x360, taa 6, seed 1337 (uniform pins)
 rustc:        rustc 1.98.1 (48a229cea 2026-09-01)
 cargo:        cargo 1.98.1 (797e8a9bc 2026-08-05)
-git HEAD:     1c5973a
+git HEAD:     9b19448
 git dirty:    yes
 gpu adapter:  NVIDIA GeForce RTX 3050 Laptop GPU
 
 ===== BUILD =====
-cargo build --release: exit 0 in 8s, 0 warning-ish lines
+cargo build --release: exit 0 in 10s, 0 warning-ish lines
 
 ===== SMOKE =====
---help exits 0 (196 lines of usage)
+--help exits 0 (197 lines of usage)
 
 ===== BASELINE =====
-baseline: ok in 42.7s
-world settle: 856 chunks in 0.9s
+baseline: ok in 3.7s
+world settle: 841 chunks in 1.1s
 png bytes: 372026
 determinism twin: differing 0 of 230400  MAE 0.0000  max 0  (DETERMINISTIC)
-self-diff sanity + twin capture took 1.9s total 44.6s
+self-diff sanity + twin capture took 1.9s total 5.6s
 
 ===== BENCH BASELINE =====
-baseline bench: wall 3.17ms (316 fps) p99 4.60 gpu total 2.64ms (161 chunks, 90 frames)
-  hi-z off: wall 3.17ms gpu 2.64ms chunks 161
-  hi-z  on: wall 2.78ms gpu 2.18ms chunks 161
+baseline bench: wall 3.20ms (313 fps) p99 3.69 gpu total 2.64ms (161 chunks, 90 frames)
+  hi-z off: wall 3.20ms gpu 2.64ms chunks 161
+  hi-z  on: wall 2.83ms gpu 2.18ms chunks 161
   pairs marched 37358  deferred 0
 
 ===== FLAG SWEEP (baseline vs variant) =====
 case                       expect  result  differ      MAE    max  seconds  bbox
-default-grade              EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-tone-map-knee              EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-sun-softness-normal        EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
-surface-debug-off          EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
+(rows tagged [ctx] are diffed against their paired context baseline, not the default capture)
+default-grade              EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
+tone-map-knee              EXACT  ok          0  0.0000    0     1.9    0.0% of frame; bbox none
+sun-softness-normal        EXACT  ok          0  0.0000    0     1.9    0.0% of frame; bbox none
+surface-debug-off          EXACT  ok          0  0.0000    0     1.9    0.0% of frame; bbox none
 repaired-lighting          EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-repaired-water             EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-no-soft-shadows            EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
-no-soft-shadow-hq          EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
-no-wind-sway               EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-no-water-look              EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+repaired-water             EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
+no-soft-shadows            EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+no-soft-shadow-hq          EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+shadow-dist-220            EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+no-wind-sway               EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
+no-water-look              EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
 no-glass-reflect           EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
 no-isolate-glass           EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-no-compact-shade-hit       EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
-compact-shade-hit          EXACT  ok          0  0.0000    0    39.3    0.0% of frame; bbox none
-water-sec-scale-2          EXACT  ok          0  0.0000    0     1.9    0.0% of frame; bbox none
+no-compact-shade-hit       EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+compact-shade-hit          EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+water-sec-scale-2          EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
 fade-schedule-smoothstep   EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
-cam-defaults               EXACT  ok          0  0.0000    0     1.9    0.0% of frame; bbox none
+cam-defaults               EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
 lod-defaults               EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-seed-sea-defaults          EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+seed-sea-defaults          EXACT  ok          0  0.0000    0     1.9    0.0% of frame; bbox none
 time-0.30                  EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
-fog-defaults               EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
+fog-defaults               EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
 wave-defaults              EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
 grade-strength-1           EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-tint-strength-1            EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-res-defaults               EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
+tint-strength-1            EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
+res-defaults               EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
 hotbar-4                   EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
 shadow-pass-explicit       EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
 no-shadow-pass-retired     EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-ambient-0.08               EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
-godray-defaults            EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
+ambient-0.08               EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+godray-defaults            EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
 fov-70                     EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-shaft-texel-4              EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
+shaft-texel-4              EXACT  ok          0  0.0000    0     2.0    0.0% of frame; bbox none
 water-mottle-stub          EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
-bar-default                EXACT  ok          0  0.0000    0     2.2    0.0% of frame; bbox none
-no-water                   CHANGE ok     207153 11.4391  199    32.5   89.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-waves                   CHANGE ok       4421  0.1017   52    34.2    1.9% of frame; bbox 138x121 at (502, 120) -- fractions 0.784,0.333,1
-no-water-reflect           CHANGE ok        570  0.0723   98     2.1    0.2% of frame; bbox 131x91 at (509, 142) -- fractions 0.795,0.394,1.
-no-water-refract           CHANGE ok        187  0.0058   40     2.2    0.1% of frame; bbox 16x28 at (624, 214) -- fractions 0.975,0.594,1.0
-no-shore-wet               CHANGE ok       2234  0.0783   36    42.8    1.0% of frame; bbox 139x122 at (501, 121) -- fractions 0.783,0.336,1
-no-shore-foam              CHANGE ok         80  0.0009   17    34.8    0.0% of frame; bbox 16x16 at (624, 226) -- fractions 0.975,0.628,1.0
-no-water-sec               CHANGE SUSPECT      0  0.0000    0    35.2    0.0% of frame; bbox none
-water-sec-scale-1          CHANGE ok         27  0.0001    4    39.9    0.0% of frame; bbox 124x96 at (516, 144) -- fractions 0.806,0.400,1.
-water-sec-scale-4          CHANGE SUSPECT      0  0.0000    0    38.3    0.0% of frame; bbox none
-water-absorb-3             CHANGE ok        178  0.0018   11     1.9    0.1% of frame; bbox 16x17 at (624, 225) -- fractions 0.975,0.625,1.0
-water-look                 CHANGE ok       5098  0.0245   22    38.4    2.2% of frame; bbox 139x122 at (501, 120) -- fractions 0.783,0.333,1
-no-water-far               may-be-inert inert-ok      0  0.0000    0     2.0    0.0% of frame; bbox none
-no-water-dark              may-be-inert inert-ok      0  0.0000    0     2.0    0.0% of frame; bbox none
-no-wave-aniso              CHANGE ok       4822  0.0771   42    37.3    2.1% of frame; bbox 139x120 at (501, 120) -- fractions 0.783,0.333,1
-no-wave-shoal              CHANGE ok       3046  0.0686   50    38.0    1.3% of frame; bbox 133x113 at (507, 129) -- fractions 0.792,0.358,1
-no-wave-fill               CHANGE ok       4534  0.0969   46    41.9    2.0% of frame; bbox 138x114 at (502, 127) -- fractions 0.784,0.353,1
-wave-strong                CHANGE ok       5188  0.1023   47     2.0    2.3% of frame; bbox 139x121 at (501, 120) -- fractions 0.783,0.333,1
-snell-bend                 CHANGE ok     230400 85.1012  218     2.8  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-snell                   CHANGE ok     230400 84.7061  218     2.0  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-caustics                   CHANGE ok          7  0.0000    1    41.2    0.0% of frame; bbox 28x83 at (612, 158) -- fractions 0.956,0.439,1.0
-cam-submerge               CHANGE ok     230397 37.3942  221     2.1  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-light-rgb               CHANGE ok     230400 41.3512  209    41.2  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-ao                      CHANGE ok     158758  2.1096   21     2.4   68.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-probe-shadow            CHANGE ok     188201  1.1888   17     2.1   81.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-probe-sun               CHANGE ok     190706  3.6218   38    40.9   82.8% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-probe-sun-high             CHANGE ok     190791  4.6338   42    39.9   82.8% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-probe-cube              CHANGE ok     168232  1.1433   15    40.6   73.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-probe-bounce            CHANGE ok     187245  1.6706   18    41.2   81.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-probe-tap                  CHANGE ok     189591  4.4992   31    41.8   82.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-probe-ambient              CHANGE ok     190892  8.9816   59    38.9   82.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-probe-noise                CHANGE ok     190580  2.8783   45     2.1   82.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-probe-fill-4               CHANGE ok     191056 34.9749  129     2.2   82.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-ambient-0.2                CHANGE ok     194085  3.8682   35     2.3   84.2% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-sky-tint                CHANGE ok     189906  1.5591   30    41.1   82.4% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-sky-specular            CHANGE ok     190488  6.4408   38    42.5   82.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-sky-cool                   CHANGE ok     203653  1.0978   14    40.5   88.4% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-cloud-cover-0.85           CHANGE ok      45699  5.1594   93     2.0   19.8% of frame; bbox 640x259 at (0, 0) -- fractions 0.000,0.000,1.000
-cloud-cover-0              CHANGE ok      24794  1.4400   92     2.2   10.8% of frame; bbox 640x235 at (0, 0) -- fractions 0.000,0.000,1.000
-cloud-height-400           CHANGE ok      27792  2.2931   96     2.2   12.1% of frame; bbox 640x235 at (0, 0) -- fractions 0.000,0.000,1.000
-cloud-patch-0.8            CHANGE ok      25863  2.3312   94    43.1   11.2% of frame; bbox 640x243 at (0, 0) -- fractions 0.000,0.000,1.000
-cloud-relief-0.8           CHANGE ok       8071  0.0483    9     2.2    3.5% of frame; bbox 640x235 at (0, 0) -- fractions 0.000,0.000,1.000
-haze-warm-0.8              CHANGE ok     140206  1.1871   17     2.2   60.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-zenith-deep-0.8            CHANGE ok     115321  0.6271   11     2.3   50.1% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-fog-dense                  CHANGE ok     213495 17.5143  102     2.2   92.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-fog-isotropic              CHANGE ok      95158  0.3870   18     2.3   41.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-fog-fast-falloff           CHANGE ok     217032  1.7379   39     2.1   94.2% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-biomes                  CHANGE ok     201793 27.2452  209    37.4   87.6% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-foliage                 CHANGE ok     145461  5.3662  169    39.1   63.1% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-meadow                  CHANGE ok        429  0.0039   25     2.3    0.2% of frame; bbox 147x37 at (493, 120) -- fractions 0.770,0.333,1.
-no-tint                    CHANGE ok      81467  0.2073    8    39.3   35.4% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-tint-half                  CHANGE ok      53768  0.1033    6     2.6   23.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-tint-balance               CHANGE ok     142274  0.4992   36    42.2   61.8% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-foliage-rich               CHANGE ok      79070  0.3148   16    39.5   34.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-canopy-relief              CHANGE ok      21210  0.3002   27    39.7    9.2% of frame; bbox 615x300 at (25, 33) -- fractions 0.039,0.092,1.0
-canopy-lift-6              CHANGE ok       4145  0.0087   10     2.1    1.8% of frame; bbox 640x242 at (0, 0) -- fractions 0.000,0.000,1.000
-tree-blue-noise            CHANGE ok        562  0.0088   92     2.0    0.2% of frame; bbox 150x50 at (490, 114) -- fractions 0.766,0.317,1.
-meadow-side                CHANGE ok        707  0.0078   19     2.1    0.3% of frame; bbox 146x48 at (494, 110) -- fractions 0.772,0.306,1.
-grass-dense                CHANGE ok     134554  4.1652  194     2.1   58.4% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-wind-sway                  CHANGE ok      85969  0.9278   97    40.9   37.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-leaf-cutout             CHANGE ok      12570  0.1913  184    36.4    5.5% of frame; bbox 617x300 at (23, 32) -- fractions 0.036,0.089,1.0
-no-leaf-thin               CHANGE ok       6388  0.0757  156    38.6    2.8% of frame; bbox 616x297 at (23, 32) -- fractions 0.036,0.089,0.9
-no-tex-variation           CHANGE ok      73203  0.2278   29    38.2   31.8% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-glass                   CHANGE ok     230400 37.9263  218    31.6  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-glass-reflect              CHANGE ok     230400 37.8515  218    56.0  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-isolate-glass              CHANGE ok     230400 37.8793  218     2.1  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-shadows                 CHANGE ok      70265  1.8268   57     2.1   30.5% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-soft-shadows               CHANGE ok         11  0.0000    1     2.2    0.0% of frame; bbox 51x42 at (571, 201) -- fractions 0.892,0.558,0.9
-soft-shadows-hq            CHANGE ok         11  0.0000    1     2.2    0.0% of frame; bbox 51x42 at (571, 201) -- fractions 0.892,0.558,0.9
-sun-softness-narrow        CHANGE SUSPECT      0  0.0000    0     2.2    0.0% of frame; bbox none
-sun-softness-wide          CHANGE ok         98  0.0004    6     2.3    0.0% of frame; bbox 69x50 at (571, 201) -- fractions 0.892,0.558,1.0
-no-distant-shadows         CHANGE ok        115  0.0005    3    39.7    0.0% of frame; bbox 15x13 at (625, 229) -- fractions 0.977,0.636,1.0
-no-water-shadow-cut        CHANGE ok        126  0.0018   10    39.7    0.1% of frame; bbox 15x14 at (625, 228) -- fractions 0.977,0.633,1.0
-no-terrain-shafts          CHANGE ok      21843  0.0949   14    34.7    9.5% of frame; bbox 640x136 at (0, 0) -- fractions 0.000,0.000,1.000
-shaft-texel-16             CHANGE ok      12344  0.0305    9     2.1    5.4% of frame; bbox 640x241 at (0, 0) -- fractions 0.000,0.000,1.000
-godray-weak                CHANGE ok      29407  0.1960   33     2.1   12.8% of frame; bbox 640x136 at (0, 0) -- fractions 0.000,0.000,1.000
-godray-dense               CHANGE ok       6408  0.0106    6     2.1    2.8% of frame; bbox 640x136 at (0, 0) -- fractions 0.000,0.000,1.000
-cloud-shadow-0.2           CHANGE ok      14744  0.1742   39     2.1    6.4% of frame; bbox 640x129 at (0, 0) -- fractions 0.000,0.000,1.000
-surface-debug-normals      CHANGE ok     194990 92.4479  221    36.9   84.6% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-legacy-lighting            CHANGE ok     190446  2.2083   45    40.2   82.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-legacy-water               CHANGE ok        564  0.0199   87    32.3    0.2% of frame; bbox 129x97 at (511, 144) -- fractions 0.798,0.400,1.
-no-full-march              CHANGE ok       2736  0.0917   52    38.4    1.2% of frame; bbox 131x47 at (509, 144) -- fractions 0.795,0.400,1.
-no-flat-secondary          CHANGE ok        383  0.0021   13    42.6    0.2% of frame; bbox 131x97 at (509, 144) -- fractions 0.795,0.400,1.
-grade-warm                 CHANGE ok     230400  1.6829    9     2.1  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-grade-cine                 CHANGE ok     230398  9.4032   18     2.0  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-grade-warm-half            CHANGE ok     230298  0.8393    5     2.1  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-tone-map-aces              CHANGE ok     230400 10.8796   29     2.1  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-no-taa                     CHANGE ok     180989  3.3631  200     2.2   78.6% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-mip-bias-1.5               CHANGE ok     161277  2.1812  121     2.2   70.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-scale-0.5                  CHANGE ok     204782  3.1746  138     2.2   88.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-fov-90                     CHANGE ok     230316 31.3951  216     2.2  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-view-distance-900          CHANGE ok       8719  0.4387  100     2.2    3.8% of frame; bbox 640x138 at (0, 0) -- fractions 0.000,0.000,1.000
-max-lod-2                  CHANGE ok       1639  0.0781  100     2.0    0.7% of frame; bbox 161x22 at (479, 109) -- fractions 0.748,0.303,1.
-no-fade                    CHANGE ok        134  0.0008   12     1.8    0.1% of frame; bbox 99x45 at (531, 120) -- fractions 0.830,0.333,0.9
-no-shadow-share            CHANGE ok        206  0.0111   84     2.1    0.1% of frame; bbox 62x13 at (578, 157) -- fractions 0.903,0.436,1.0
-no-offscreen-shadows       may-be-inert inert-ok      0  0.0000    0     2.2    0.0% of frame; bbox none
-demo-edits                 CHANGE ok     230394 37.7525  232     2.2  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-demo-glass                 CHANGE ok     230389 38.0187  208     2.2  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-demo-lamps                 CHANGE ok     230400 41.6688  210     2.1  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1.000
-hud                        CHANGE ok      24300  4.5452  225     2.2   10.5% of frame; bbox 466x178 at (87, 171) -- fractions 0.136,0.475,0.
-sweep wall time: 1929s for 133 cases
+bar-default                EXACT  ok          0  0.0000    0     2.1    0.0% of frame; bbox none
+no-water                   CHANGE ok     207153 11.4391  199     2.1   89.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-waves                   CHANGE ok       4421  0.1017   52     2.1    1.9% of frame; bbox 138x121 at (502, 120) -- fractions 0.784,0.3
+no-water-reflect           CHANGE ok        570  0.0723   98     2.1    0.2% of frame; bbox 131x91 at (509, 142) -- fractions 0.795,0.39
+no-water-refract           CHANGE ok        187  0.0058   40     2.2    0.1% of frame; bbox 16x28 at (624, 214) -- fractions 0.975,0.594
+no-shore-wet               CHANGE ok       2234  0.0783   36     2.1    1.0% of frame; bbox 139x122 at (501, 121) -- fractions 0.783,0.3
+no-shore-foam              CHANGE ok         80  0.0009   17     2.4    0.0% of frame; bbox 16x16 at (624, 226) -- fractions 0.975,0.628
+no-water-sec               may-be-inert inert-ok      0  0.0000    0     2.2    0.0% of frame; bbox none
+water-sec-scale-1          CHANGE ok         27  0.0001    4     2.2    0.0% of frame; bbox 124x96 at (516, 144) -- fractions 0.806,0.40
+water-sec-scale-4          may-be-inert inert-ok      0  0.0000    0     2.2    0.0% of frame; bbox none
+water-absorb-3             CHANGE ok        178  0.0018   11     2.2    0.1% of frame; bbox 16x17 at (624, 225) -- fractions 0.975,0.625
+water-look                 CHANGE ok       5098  0.0245   22     2.2    2.2% of frame; bbox 139x122 at (501, 120) -- fractions 0.783,0.3
+no-water-far               may-be-inert inert-ok      0  0.0000    0     2.2    0.0% of frame; bbox none [ctx]
+no-water-dark              may-be-inert inert-ok      0  0.0000    0     2.1    0.0% of frame; bbox none [ctx]
+no-wave-aniso              CHANGE ok       4822  0.0771   42     2.2    2.1% of frame; bbox 139x120 at (501, 120) -- fractions 0.783,0.3
+no-wave-shoal              CHANGE ok       3046  0.0686   50     2.2    1.3% of frame; bbox 133x113 at (507, 129) -- fractions 0.792,0.3
+no-wave-fill               CHANGE ok       4534  0.0969   46     2.2    2.0% of frame; bbox 138x114 at (502, 127) -- fractions 0.784,0.3
+wave-strong                CHANGE ok       5188  0.1023   47     2.2    2.3% of frame; bbox 139x121 at (501, 120) -- fractions 0.783,0.3
+snell-bend                 CHANGE ok       1264  0.4978  184     2.2    0.5% of frame; bbox 119x79 at (26, 0) -- fractions 0.041,0.000,0 [ctx]
+no-snell                   CHANGE SUSPECT      0  0.0000    0     2.2    0.0% of frame; bbox none [ctx]
+caustics                   CHANGE ok          7  0.0000    1     2.2    0.0% of frame; bbox 28x83 at (612, 158) -- fractions 0.956,0.439
+cam-submerge               CHANGE ok     230397 37.3942  221     2.1  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-light-rgb               CHANGE ok     229275 10.3893   54     2.1   99.5% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1 [ctx]
+no-ao                      CHANGE ok     158758  2.1096   21     2.2   68.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-probe-shadow            CHANGE ok     188201  1.1888   17     2.1   81.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-probe-sun               CHANGE ok     190706  3.6218   38     2.0   82.8% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+probe-sun-high             CHANGE ok     190791  4.6338   42     2.1   82.8% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-probe-cube              CHANGE ok     168232  1.1433   15     2.2   73.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-probe-bounce            CHANGE ok     187245  1.6706   18     2.1   81.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+probe-tap                  CHANGE ok     189591  4.4992   31     2.2   82.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+probe-ambient              CHANGE ok     190892  8.9816   59     2.1   82.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+probe-noise                CHANGE ok     189609  1.7067   26     2.1   82.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1 [ctx]
+probe-fill-4               CHANGE ok     191056 34.9749  129     2.2   82.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+ambient-0.2                CHANGE ok     194085  3.8682   35     2.3   84.2% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-sky-tint                CHANGE ok     189906  1.5591   30     2.3   82.4% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-sky-specular            CHANGE ok     190488  6.4408   38     2.3   82.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+sky-cool                   CHANGE ok     203653  1.0978   14     2.3   88.4% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+cloud-cover-0.85           CHANGE ok      45699  5.1594   93     2.3   19.8% of frame; bbox 640x259 at (0, 0) -- fractions 0.000,0.000,1
+cloud-cover-0              CHANGE ok      24794  1.4400   92     2.3   10.8% of frame; bbox 640x235 at (0, 0) -- fractions 0.000,0.000,1
+cloud-height-400           CHANGE ok      27792  2.2931   96     2.3   12.1% of frame; bbox 640x235 at (0, 0) -- fractions 0.000,0.000,1
+cloud-patch-0.8            CHANGE ok      25863  2.3312   94     2.3   11.2% of frame; bbox 640x243 at (0, 0) -- fractions 0.000,0.000,1
+cloud-relief-0.8           CHANGE ok       8071  0.0483    9     2.2    3.5% of frame; bbox 640x235 at (0, 0) -- fractions 0.000,0.000,1
+haze-warm-0.8              CHANGE ok     140206  1.1871   17     2.2   60.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+zenith-deep-0.8            CHANGE ok     115321  0.6271   11     2.2   50.1% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+fog-dense                  CHANGE ok     213495 17.5143  102     2.2   92.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+fog-isotropic              CHANGE ok      95158  0.3870   18     2.1   41.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+fog-fast-falloff           CHANGE ok     217032  1.7379   39     2.3   94.2% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-biomes                  CHANGE ok     201793 27.2452  209     2.0   87.6% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-foliage                 CHANGE ok     145461  5.3662  169     2.2   63.1% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-meadow                  CHANGE ok        429  0.0039   25     2.3    0.2% of frame; bbox 147x37 at (493, 120) -- fractions 0.770,0.33
+no-tint                    CHANGE ok      81467  0.2073    8     2.5   35.4% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+tint-half                  CHANGE ok      53768  0.1033    6     2.4   23.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+tint-balance               CHANGE ok     142274  0.4992   36     2.3   61.8% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+foliage-rich               CHANGE ok      79070  0.3148   16     2.4   34.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+canopy-relief              CHANGE ok      21210  0.3002   27     2.3    9.2% of frame; bbox 615x300 at (25, 33) -- fractions 0.039,0.092
+canopy-lift-6              CHANGE ok       4145  0.0087   10     2.3    1.8% of frame; bbox 640x242 at (0, 0) -- fractions 0.000,0.000,1
+tree-blue-noise            CHANGE ok        562  0.0088   92     2.3    0.2% of frame; bbox 150x50 at (490, 114) -- fractions 0.766,0.31
+meadow-side                CHANGE ok        707  0.0078   19     2.3    0.3% of frame; bbox 146x48 at (494, 110) -- fractions 0.772,0.30
+grass-dense                CHANGE ok     134554  4.1652  194     2.3   58.4% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+wind-sway                  CHANGE ok      85969  0.9278   97     2.4   37.3% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-leaf-cutout             CHANGE ok      12570  0.1913  184     2.4    5.5% of frame; bbox 617x300 at (23, 32) -- fractions 0.036,0.089
+no-leaf-thin               CHANGE ok       6388  0.0757  156     2.3    2.8% of frame; bbox 616x297 at (23, 32) -- fractions 0.036,0.089
+no-tex-variation           CHANGE ok      73203  0.2278   29     2.2   31.8% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-glass                   CHANGE ok       2044  0.0821   36     2.3    0.9% of frame; bbox 210x58 at (192, 197) -- fractions 0.300,0.54 [ctx]
+glass-reflect              CHANGE ok       2024  0.0563   36     2.2    0.9% of frame; bbox 209x58 at (193, 197) -- fractions 0.302,0.54 [ctx]
+isolate-glass              CHANGE SUSPECT      0  0.0000    0     2.3    0.0% of frame; bbox none [ctx]
+no-shadows                 CHANGE ok      70265  1.8268   57     2.2   30.5% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+soft-shadows               CHANGE ok         11  0.0000    1     2.2    0.0% of frame; bbox 51x42 at (571, 201) -- fractions 0.892,0.558
+soft-shadows-hq            CHANGE ok         11  0.0000    1     2.2    0.0% of frame; bbox 51x42 at (571, 201) -- fractions 0.892,0.558
+sun-softness-narrow        may-be-inert ok         11  0.0000    1     2.2    0.0% of frame; bbox 51x42 at (571, 201) -- fractions 0.892,0.558 [ctx]
+sun-softness-wide          may-be-inert ok         91  0.0004    6     2.3    0.0% of frame; bbox 69x50 at (571, 201) -- fractions 0.892,0.558 [ctx]
+no-distant-shadows         CHANGE ok        115  0.0005    3     2.3    0.0% of frame; bbox 15x13 at (625, 229) -- fractions 0.977,0.636
+no-water-shadow-cut        CHANGE ok        126  0.0018   10     2.3    0.1% of frame; bbox 15x14 at (625, 228) -- fractions 0.977,0.633
+no-terrain-shafts          CHANGE ok      21843  0.0949   14     2.3    9.5% of frame; bbox 640x136 at (0, 0) -- fractions 0.000,0.000,1
+shaft-texel-16             CHANGE ok      12344  0.0305    9     2.3    5.4% of frame; bbox 640x241 at (0, 0) -- fractions 0.000,0.000,1
+godray-weak                CHANGE ok      29407  0.1960   33     2.3   12.8% of frame; bbox 640x136 at (0, 0) -- fractions 0.000,0.000,1
+godray-dense               CHANGE ok       6408  0.0106    6     2.4    2.8% of frame; bbox 640x136 at (0, 0) -- fractions 0.000,0.000,1
+cloud-shadow-0.2           CHANGE ok      14744  0.1742   39     2.2    6.4% of frame; bbox 640x129 at (0, 0) -- fractions 0.000,0.000,1
+surface-debug-normals      CHANGE ok     194990 92.4479  221     2.3   84.6% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+legacy-lighting            CHANGE ok     190446  2.2083   45     2.3   82.7% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+legacy-water               CHANGE ok        564  0.0199   87     2.3    0.2% of frame; bbox 129x97 at (511, 144) -- fractions 0.798,0.40
+no-full-march              CHANGE ok       2736  0.0917   52     2.3    1.2% of frame; bbox 131x47 at (509, 144) -- fractions 0.795,0.40
+no-flat-secondary          CHANGE ok        383  0.0021   13     2.3    0.2% of frame; bbox 131x97 at (509, 144) -- fractions 0.795,0.40
+grade-warm                 CHANGE ok     230400  1.6829    9     2.2  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+grade-cine                 CHANGE ok     230398  9.4032   18     2.3  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+grade-warm-half            CHANGE ok     230298  0.8393    5     2.2  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+tone-map-aces              CHANGE ok     230400 10.8796   29     2.4  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+no-taa                     CHANGE ok     180989  3.3631  200     2.4   78.6% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+mip-bias-1.5               CHANGE ok     161277  2.1812  121     2.2   70.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+scale-0.5                  CHANGE ok     204782  3.1746  138     2.4   88.9% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+fov-90                     CHANGE ok     230316 31.3951  216     2.3  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+view-distance-900          CHANGE ok       8719  0.4387  100     2.2    3.8% of frame; bbox 640x138 at (0, 0) -- fractions 0.000,0.000,1
+max-lod-2                  CHANGE ok       1639  0.0781  100     1.9    0.7% of frame; bbox 161x22 at (479, 109) -- fractions 0.748,0.30
+no-fade                    CHANGE ok        134  0.0008   12     1.8    0.1% of frame; bbox 99x45 at (531, 120) -- fractions 0.830,0.333
+no-shadow-share            CHANGE ok        206  0.0111   84     2.3    0.1% of frame; bbox 62x13 at (578, 157) -- fractions 0.903,0.436
+no-offscreen-shadows       may-be-inert inert-ok      0  0.0000    0     2.1    0.0% of frame; bbox none [ctx]
+demo-edits                 CHANGE ok     230394 37.7525  232     2.3  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+demo-glass                 CHANGE ok     230389 38.0187  208     2.2  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+demo-lamps                 CHANGE ok     230400 41.6688  210     2.1  100.0% of frame; bbox 640x360 at (0, 0) -- fractions 0.000,0.000,1
+hud                        CHANGE ok      24300  4.5452  225     2.2   10.5% of frame; bbox 466x178 at (87, 171) -- fractions 0.136,0.47
+sweep wall time: 321s for 134 cases
 
 ===== PERF SWEEP (bench-frames, hi-z off block) =====
-baseline: wall 3.17ms gpu 2.64ms (hi-z off block)
+baseline: wall 3.20ms gpu 2.64ms (hi-z off block)
 case                  wall_ms    fps  p99_ms   gpu_ms  d_wall%  d_gpu%
-no-shadows               3.19    313     4.60    2.56      0.6     -3.0
-soft-shadows             3.46    289     5.24    2.93      9.1     11.0
-no-water                 2.52    396     3.30    2.09    -20.5    -20.8
-no-foliage               3.08    325     3.98    2.50     -2.8     -5.3
-no-taa                   3.07    326     4.45    2.61     -3.2     -1.1
-max-lod-2                3.28    305     4.22    2.71      3.5      2.7
-scale-0.5                1.88    531     2.84    1.44    -40.7    -45.5
-scale-1.25               4.14    242     5.24    3.58     30.6     35.6
-no-full-march            3.29    304     4.17    2.73      3.8      3.4
-compact-shade-hit        3.33    301    12.34    2.71      5.0      2.7
-no-water-sec             3.25    308     6.81    2.59      2.5     -1.9
-water-sec-scale-4        3.34    299     5.94    2.80      5.4      6.1
-no-light-rgb             3.32    301     8.00    2.68      4.7      1.5
-no-flat-secondary        3.32    301     7.03    2.73      4.7      3.4
-drift: baseline re-run at end 3.34ms (+5.4% vs first) -- treat deltas within about ±5% as order noise
+no-shadows               3.23    310     4.02    2.54      0.9     -3.8
+soft-shadows             3.46    289     4.99    2.94      8.1     11.4
+no-water                 2.69    372     3.58    2.16    -15.9    -18.2
+no-foliage               3.16    316     4.87    2.53     -1.2     -4.2
+no-taa                   3.25    307     4.28    2.64      1.6      0.0
+max-lod-2                3.45    290     4.25    2.76      7.8      4.5
+scale-0.5                1.89    528     3.62    1.42    -40.9    -46.2
+scale-1.25               4.35    230     5.52    3.68     35.9     39.4
+no-full-march            3.25    308     6.21    2.65      1.6      0.4
+compact-shade-hit        3.32    301     4.39    2.68      3.7      1.5
+no-water-sec             3.19    314     4.18    2.58     -0.3     -2.3
+water-sec-scale-4        3.39    295     4.18    2.78      5.9      5.3
+no-light-rgb             3.34    299     4.12    2.67      4.4      1.1
+no-flat-secondary        3.44    291     6.42    2.74      7.5      3.8
+shadow-dist-128          3.26    306     4.55    2.71      1.9      2.7
+demo-glass-b             3.85    260     5.76    3.16     20.3     19.7
+glass-reflect-b          4.53    221     5.65    3.88     41.6     47.0
+drift: baseline re-run at end 3.27ms (+2.2% vs first) -- treat deltas within about ±5% as order noise
 
 ===== FUNCTIONAL =====
 edit-journal replay: save-capture vs load-capture differing 0 (MAE 0.0000)  [ok]
---bench-terrain 24: exit 0 in 0.6s | chunks:             24 | worldgen            2384.7 | tree build          1354.3 | lighting            1893.5
---lookbook: ok in 190.2s (4690311 bytes)
-cargo test --release: 376 passed, 0 failed across 48 suites in 51s  [ok]
+--bench-terrain 24: exit 0 in 0.6s | chunks:             24 | worldgen            2642.3 | tree build          1541.7 | lighting            2239.5
+--lookbook: ok in 149.4s (4690311 bytes)
+cargo test --release: 384 passed, 0 failed across 49 suites in 49s  [ok]
 
 ===== VERDICT =====
-SUSPECT (3):
-  [flag] no-water-sec: arm moved zero pixels vs baseline
-  [flag] water-sec-scale-4: arm moved zero pixels vs baseline
-  [flag] sun-softness-narrow: arm moved zero pixels vs baseline
-EXPECTED-INERT (3):
-  [flag] no-water-far: no water beyond WATER_FAR_DIST (128 blocks) in the spawn capture
-  [flag] no-water-dark: no water deeper than WATER_DARK_DEPTH (15 blocks) in the spawn capture
-  [flag] no-offscreen-shadows: no off-screen occluders in the spawn capture
-notes: 1
-  perf: scale-1.25 wall +31% over baseline
+SUSPECT (2):
+  [flag] no-snell: arm moved zero pixels vs baseline (vs paired context)
+  [flag] isolate-glass: arm moved zero pixels vs baseline (vs paired context)
+EXPECTED-INERT (5):
+  [flag] no-water-sec: the share path needs enough flat-water spans in frame -- 960x540 engages it, the 640x360 fast capture does not
+  [flag] water-sec-scale-4: same flat-water-span threshold as no-water-sec
+  [flag] no-water-far: no water beyond WATER_FAR_DIST (128 blocks) in view, even from the paired horizon vantage
+  [flag] no-water-dark: no water deeper than WATER_DARK_DEPTH (15 blocks) in view, even with a submerged eye
+  [flag] no-offscreen-shadows: no off-screen occluders in reach, even from the paired hudged-against-the-hill vantage
+notes: 4
+  flag sun-softness-narrow: expected inert but moved 11 px -- the trigger exists after all; keep an eye on repeat runs
+  flag sun-softness-wide: expected inert but moved 91 px -- the trigger exists after all; keep an eye on repeat runs
+  perf: scale-1.25 wall +36% over baseline
+  perf: glass-reflect-b wall +42% over baseline
 
 ===== END OF REPORT =====
 Send this file back. The PNGs it references are in the run directory
