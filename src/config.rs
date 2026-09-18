@@ -730,7 +730,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                      --no-tint                no per-biome vegetation tint\n\
                      --tint-strength F        how far the biome tint is taken (default 1)\n\
                      --water-absorb F         scale water's extinction (0 = perfectly clear)\n\
-                     --water-mottle F         water layer mottling (ships 0; 0.2 = pre-batch-26)\n\
+                     --water-mottle F         water layer mottling (retired: parsed, warned, force-zeroed)\n\
                      --cam-height F           camera height in internal Y (default 40)\n\
                      --cam-yaw D              camera yaw in degrees (default 40)\n\
                      --cam-pitch D            camera pitch in degrees (default -14)\n\

@@ -9,6 +9,7 @@ Everything here is reference material it points to.
 | `rendering.md` | Atmosphere (fog/clouds), shadow architecture, water filtering, lighting, TAA/grade |
 | `world.md` | Worldgen and sea level, `BlockDef` fields, the albedo table, edit journals |
 | `testing.md` | Suite layout, enforced invariants, commands, the validation scripts, test protocol |
+| `audit-triage.md` | Four external audits adjudicated against this tree — verified findings and dispositions |
 | `lessons.md` | Living log of pitfalls and agent fumbles — append freely |
 | `adr/` | Architecture Decision Records; template and rules in `adr/README.md` |
 

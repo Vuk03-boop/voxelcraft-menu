@@ -60,11 +60,11 @@ fn resize_and_lighting_changes_invalidate_history() {
     let a=Preferences::default();let mut b=a.clone();b.scale=0.8;
     let p=a.plan(&b);assert!(p.resize && p.history);
     b=a.clone();b.fog_density+=0.0001;assert!(a.plan(&b).history);
-    b=a.clone();b.taa=!b.taa;assert!(a.plan(&b).history);
+    b=a.clone();b.taa = !b.taa;assert!(a.plan(&b).history);
 }
 #[test]
 fn vsync_does_not_require_world_targets() {
-    let a=Preferences::default();let mut b=a.clone();b.vsync=!b.vsync;
+    let a=Preferences::default();let mut b=a.clone();b.vsync = !b.vsync;
     let p=a.plan(&b);assert!(p.surface);assert!(!p.resize && !p.history);
 }
 #[test]
