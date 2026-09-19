@@ -52,3 +52,32 @@ camera. Benchmark truth: pairing beats screenshots. Each arm now ships with
 the vantage that exercises it (the same catalogue `src/harness/vantage.rs`
 curates), or with an explicit "expected inert in this scene, because ..."
 note. Never green-light a feature from one camera.
+
+## A diff against a different camera measures the camera, not the flag
+
+The first repaired run of `validation/upload_report.py` paired scene-context
+arms with their curated vantages but still diffed them against the *default*
+baseline — so every paired arm "passed" at 100% of frame by construction and
+said nothing about the feature it was meant to watch. Any diff-based guard
+needs an explicit statement of what baseline removes what variable; here the
+answer is a cached context baseline per distinct context (same pins, flag
+left off), and an import-time assert that every CTX arm's args end with its
+declared context. SUSPECT lost teeth for exactly one run; caught by reading
+the diffs instead of celebrating the green. Also closed by the same run:
+the water-sec perf anomalies were thermal ordering all along (drift ±5.4%
+with corrected re-run; scale-1.25's real number is +31%, expected).
+
+## "Zero pixels" twice: read the plumbing before renaming the test
+
+Two `SUSPECT` rows from the first paired-context run taught opposite lessons
+in the same hour. `isolate-glass` looked like dead plumbing — flag bit set,
+override declared, zero pixels — but the lane-split lives in `RESOLVE_LANE`
+wiring in `render/mod.rs` (a sed window had cut off the pair list) and the
+zero pixels *are* the contract: it is an output-preserving A/B pipeline, so
+it belongs in EXACT with `compact-shade-hit`, with a perf arm to say why it
+exists. `no-snell` was genuinely scene-gated, but by a constant, not a
+camera: `SNELL_MIN_DEPTH = 3.0` blocks makes a one-block-deep periscope
+identical on and off; the context needed submerge 5, not a new test. The
+guard against the first failure mode now lives in tests/spec_hi.rs: every
+`SPEC_` override with a `FLAG_HI_` sibling must be wired, and every wired
+name must exist — dead by construction is the failure regexes find quietest.

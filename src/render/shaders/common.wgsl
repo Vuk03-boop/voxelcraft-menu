@@ -588,7 +588,8 @@ fn march_chunk(ci: u32, ro_w: vec3<f32>, rd: vec3<f32>, t_limit: f32, skip_water
     let c = chunks[ci];
     let vs = c.voxel_size;
     let ro = (ro_w - c.origin) / vs;
-    let inv = 1.0 / rd;
+    let rd_dda = select(rd, vec3<f32>(1e-6, 1e-6, 1e-6) * sign(rd + vec3<f32>(1e-9)), abs(rd) < vec3<f32>(1e-6));
+    let inv = 1.0 / rd_dda;
     let bmin = (c.aabb_min - c.origin) / vs;
     let bmax = (c.aabb_max - c.origin) / vs;
     let t0 = (bmin - ro) * inv;
@@ -610,7 +611,7 @@ fn march_chunk(ci: u32, ro_w: vec3<f32>, rd: vec3<f32>, t_limit: f32, skip_water
     } else {
         axis = 2u;
     }
-    let pos_dir = rd > vec3<f32>(0.0);
+    let pos_dir = rd_dda > vec3<f32>(0.0);
     var pos = ro + rd * t;
     var cell = vec3<i32>(floor(pos));
     if t_enter > 0.0 {
@@ -1107,8 +1108,9 @@ fn shadow_ray(ro: vec3<f32>, rd: vec3<f32>, max_dist: f32) -> bool {
         r_ro = ro + rd * t_surf;
         r_dist = r_dist - t_surf;
     }
-    let inv = 1.0 / rd;
-    let pos_dir = rd > vec3<f32>(0.0);
+    let rd_dda = select(rd, vec3<f32>(1e-6, 1e-6, 1e-6) * sign(rd + vec3<f32>(1e-9)), abs(rd) < vec3<f32>(1e-6));
+    let inv = 1.0 / rd_dda;
+    let pos_dir = rd_dda > vec3<f32>(0.0);
     var cell = vec3<i32>(floor(r_ro / 64.0));
     var t = 0.0;
     var last: u32 = NO_CHUNK;
@@ -1154,8 +1156,9 @@ override SOFT_TAPS: u32 = 3u;
 const SOFT_MISS_DIST: f32 = 64.0;
 
 fn shadow_ray_t(ro: vec3<f32>, rd: vec3<f32>, max_dist: f32) -> f32 {
-    let inv = 1.0 / rd;
-    let pos_dir = rd > vec3<f32>(0.0);
+    let rd_dda = select(rd, vec3<f32>(1e-6, 1e-6, 1e-6) * sign(rd + vec3<f32>(1e-9)), abs(rd) < vec3<f32>(1e-6));
+    let inv = 1.0 / rd_dda;
+    let pos_dir = rd_dda > vec3<f32>(0.0);
     var cell = vec3<i32>(floor(ro / 64.0));
     var t = 0.0;
     var last: u32 = NO_CHUNK;

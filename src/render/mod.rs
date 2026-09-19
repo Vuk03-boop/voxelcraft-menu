@@ -627,6 +627,7 @@ pub struct FrameParams {
 
     pub spec_hi: u32,
     pub ambient: f32,
+    pub shadow_dist: f32,
     pub fog: Fog,
 
     pub clouds: Clouds,
@@ -1657,7 +1658,7 @@ impl Renderer {
             max_pairs: self.max_pairs,
             fog_density: p.fog.density,
             fog_falloff: p.fog.falloff,
-            shadow_dist: 220.0,
+            shadow_dist: p.shadow_dist,
             ambient: p.ambient,
             fog_scatter: p.fog.scatter,
             fog_g: p.fog.g,

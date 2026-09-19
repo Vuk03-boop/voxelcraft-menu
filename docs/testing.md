@@ -63,11 +63,13 @@ binary, then writes `uploadme.txt` (plus a full command trace in
    bit-identical (EXACT — `compact-shade-hit` is one: it is an alternate
    build of the same math, so bit-exactness is its contract); feature arms
    must move pixels (CHANGE), and an arm that moves nothing is reported
-   SUSPECT rather than silently green. Arms whose feature the baseline
-   capture has nothing for are paired with a curated vantage from
-   `src/harness/vantage.rs`'s catalogue (the demo structures and the
-   submerged/periscope scenes exist for exactly this), and the few that
-   still cannot trigger in the spawn scene carry the INERT expectation and
+   SUSPECT rather than silently green. Arms whose feature needs a non-default
+   vantage are declared in `CTX` (single source: the same catalogue
+   `src/harness/vantage.rs` curates) and are diffed against a **paired
+   context baseline** — the same vantage with the arm's flag left off, cached
+   per context — so the measured pixels are the flag's alone and an arm can
+   never pass by merely pointing the camera elsewhere. Arms that still
+   cannot trigger in any available scene carry the INERT expectation and
    report as expected-inert with the reason spelled out.
 4. **Perf sweep**: `--bench-frames` under perf-relevant flags with
    wall/gpu-total deltas vs baseline, then one baseline re-run at the end so
@@ -82,12 +84,21 @@ report names (and a note fires if such an arm starts moving pixels — the
 trigger exists after all). The file is designed to be pasted back so someone
 else can diagnose or optimize from it.
 
-Scene-sensitivity notes learned the first time this ran: `--tint-strength`
+Scene-sensitivity notes learned the first times this ran: `--tint-strength`
 clamps to 1.0 in the CPU→GPU frame upload, so values above 1 are
 bit-identical by construction; `--probe-noise` only perturbs a forced
 `--probe-fill` pre-fill; `--snell`/`--snell-bend` engage only under water;
 the demo builders sit 14 blocks ahead of the camera, which the default
-vantage leaves buried inside the front hill.
+vantage leaves buried inside the front hill; the water-secondary share path
+and the soft-shadow contact both under-cover at the `--fast` 640x360 capture
+(they engaged at 960x540), which is why those arms are INERT rather than
+noiseless; the first perf sweep's apparent regressions (compact +30%,
+water-sec-scale-4 +32%) were thermal ordering — the drift re-run now prices
+that in before anyone panics; `isolate-glass` is an output-preserving
+lane-split A/B and sits in EXACT for the same reason as `compact-shade-hit`,
+with `isolate-glass-b` in the perf table to price it; and `--no-snell` only
+shows itself below `SNELL_MIN_DEPTH` (3 blocks), which is why its context
+submerges five.
 
 ## Protocol
 

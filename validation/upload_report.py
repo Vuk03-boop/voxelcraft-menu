@@ -12,7 +12,10 @@ screenshots are kept in uploadme_runs/ for reference.
 Arms that may move zero pixels because the baseline capture has nothing for
 the feature to touch are paired with a curated vantage (from the same
 catalogue src/harness/vantage.rs uses) or given the INERT expectation, so a
-zero-pixel arm stays a signal instead of noise.
+zero-pixel arm stays a signal instead of noise. Paired arms are diffed
+against a cached CONTEXT baseline -- the same vantage with the arm's flag
+left off -- so the measured pixels are the flag's alone and an arm can never
+pass by merely pointing the camera elsewhere.
 
 Usage:
     python3 validation/upload_report.py [--fast] [--skip-tests] [--skip-lookbook]
@@ -70,6 +73,7 @@ CASES = [
     ("repaired-water",           ["--repaired-water"],                                        UN),
     ("no-soft-shadows",          ["--no-soft-shadows"],                                       UN),
     ("no-soft-shadow-hq",        ["--no-soft-shadow-hq"],                                     UN),
+    ("shadow-dist-220",           ["--shadow-dist", "220"],                                    UN),
     ("no-wind-sway",             ["--no-wind-sway"],                                          UN),
     ("no-water-look",            ["--no-water-look"],                                         UN),
     ("no-glass-reflect",         ["--no-glass-reflect"],                                      UN),
@@ -110,20 +114,20 @@ CASES += [
     ("no-water-refract",         ["--no-water-refract"],                                      CH),
     ("no-shore-wet",             ["--no-shore-wet"],                                          CH),
     ("no-shore-foam",            ["--no-shore-foam"],                                         CH),
-    ("no-water-sec",             ["--no-water-sec"],                                          CH),
+    ("no-water-sec",             ["--no-water-sec"],                                          INERT),
     ("water-sec-scale-1",        ["--water-sec-scale", "1"],                                  CH),
-    ("water-sec-scale-4",        ["--water-sec-scale", "4"],                                  CH),
+    ("water-sec-scale-4",        ["--water-sec-scale", "4"],                                  INERT),
     ("water-absorb-3",           ["--water-absorb", "3"],                                     CH),
     ("water-look",               ["--water-look"],                                            CH),
-    ("no-water-far",           ["--no-water-far"],                                       INERT),
-    ("no-water-dark",          ["--no-water-dark"],                                      INERT),
+    ("no-water-far",           ["--no-water-far", "--cam-height", "60", "--cam-yaw", "120", "--cam-pitch", "-6"],  INERT),
+    ("no-water-dark",          ["--no-water-dark", "--cam-submerge", "8"],               INERT),
     ("no-wave-aniso",            ["--no-wave-aniso"],                                         CH),
     ("no-wave-shoal",            ["--no-wave-shoal"],                                         CH),
     ("no-wave-fill",             ["--no-wave-fill"],                                          CH),
     ("wave-strong",              ["--wave-amp", "0.3", "--wave-scale", "12",
                                   "--wave-speed", "1.2"],                                     CH),
-    ("snell-bend",             ["--snell-bend", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
-    ("no-snell",               ["--no-snell", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
+    ("snell-bend",             ["--snell-bend", "--cam-submerge", "5", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
+    ("no-snell",               ["--no-snell", "--cam-submerge", "5", "--cam-yaw", "143", "--cam-pitch", "30"],  CH),
     ("caustics",                 ["--caustics"],                                              CH),
     ("cam-submerge",             ["--cam-submerge", "3"],                                     CH),
     ("no-light-rgb",           ["--no-light-rgb", "--demo-lamps", "--time", "0.30", "--cam-height", "-20", "--cam-yaw", "0", "--cam-pitch", "0"],  CH),
@@ -169,12 +173,12 @@ CASES += [
     ("no-tex-variation",         ["--no-tex-variation"],                                      CH),
     ("no-glass",               ["--no-glass", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
     ("glass-reflect",          ["--glass-reflect", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
-    ("isolate-glass",          ["--isolate-glass", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
+    ("isolate-glass",            ["--isolate-glass"],                                          UN),
     ("no-shadows",               ["--no-shadows"],                                            CH),
     ("soft-shadows",             ["--soft-shadows"],                                          CH),
     ("soft-shadows-hq",          ["--soft-shadows", "--soft-shadow-hq"],                      CH),
-    ("sun-softness-narrow",    ["--soft-shadows", "--sun-softness", "narrow"],           CH),
-    ("sun-softness-wide",      ["--soft-shadows", "--sun-softness", "wide"],             CH),
+    ("sun-softness-narrow",    ["--sun-softness", "narrow", "--soft-shadows"],           INERT),
+    ("sun-softness-wide",      ["--sun-softness", "wide", "--soft-shadows"],             INERT),
     ("no-distant-shadows",       ["--no-distant-shadows"],                                    CH),
     ("no-water-shadow-cut",      ["--no-water-shadow-cut"],                                   CH),
     ("no-terrain-shafts",        ["--no-terrain-shafts"],                                     CH),
@@ -199,7 +203,7 @@ CASES += [
     ("max-lod-2",                ["--max-lod", "2"],                                          CH),
     ("no-fade",                  ["--no-fade"],                                               CH),
     ("no-shadow-share",          ["--no-shadow-share"],                                       CH),
-    ("no-offscreen-shadows",   ["--no-offscreen-shadows"],                               INERT),
+    ("no-offscreen-shadows",   ["--no-offscreen-shadows", "--cam-height", "8", "--cam-pitch", "0"],  INERT),
     ("demo-edits",             ["--demo-edits", "--cam-height", "14", "--cam-pitch", "-20"],  CH),
     ("demo-glass",             ["--demo-glass", "--cam-height", "14", "--cam-pitch", "-20"],  CH),
     ("demo-lamps",             ["--demo-lamps", "--time", "0.30", "--cam-height", "-20", "--cam-yaw", "0", "--cam-pitch", "0"],  CH),
@@ -210,10 +214,44 @@ CASES += [
 # baseline capture has nothing for it to touch. A zero-pixel arm there reports
 # inert-ok instead of suspect; if one starts moving pixels, the note is kept.
 INERT_WHY = {
-    "no-water-far": "no water beyond WATER_FAR_DIST (128 blocks) in the spawn capture",
-    "no-water-dark": "no water deeper than WATER_DARK_DEPTH (15 blocks) in the spawn capture",
-    "no-offscreen-shadows": "no off-screen occluders in the spawn capture",
+    "no-water-far": "no water beyond WATER_FAR_DIST (128 blocks) in view, even from the paired horizon vantage",
+    "no-water-dark": "no water deeper than WATER_DARK_DEPTH (15 blocks) in view, even with a submerged eye",
+    "no-offscreen-shadows": "no off-screen occluders in reach, even from the paired hudged-against-the-hill vantage",
+    "no-water-sec": "the share path needs enough flat-water spans in frame -- 960x540 engages it, the 640x360 fast capture does not",
+    "water-sec-scale-4": "same flat-water-span threshold as no-water-sec",
+    "sun-softness-narrow": "soft contact is resolution-bound (12 px at 960x540); small captures can under-cover it",
+    "sun-softness-wide": "soft contact is resolution-bound (12 px at 960x540); small captures can under-cover it",
 }
+
+# Paired scene context: the flags below only do anything at a non-default
+# vantage, so the sweep renders the CONTEXT once (the arm's own args with the
+# distinguishing flag dropped) and diffs the arm against that cached baseline.
+# Without this, a paired arm diffs against the default capture and measures
+# camera motion instead of the flag.
+CTX = {
+    "snell-bend":           ["--cam-submerge", "5", "--cam-yaw", "143", "--cam-pitch", "30"],
+    "no-snell":             ["--cam-submerge", "5", "--cam-yaw", "143", "--cam-pitch", "30"],
+    "no-light-rgb":         ["--demo-lamps", "--time", "0.30", "--cam-height", "-20",
+                             "--cam-yaw", "0", "--cam-pitch", "0"],
+    "probe-noise":          ["--probe-fill", "0.65"],
+    "no-glass":             ["--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143",
+                             "--cam-pitch", "-25"],
+    "glass-reflect":        ["--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143",
+                             "--cam-pitch", "-25"],
+    "sun-softness-narrow":  ["--soft-shadows"],
+    "sun-softness-wide":    ["--soft-shadows"],
+    "no-water-far":         ["--cam-height", "60", "--cam-yaw", "120", "--cam-pitch", "-6"],
+    "no-water-dark":        ["--cam-submerge", "8"],
+    "no-offscreen-shadows": ["--cam-height", "8", "--cam-pitch", "0"],
+}
+
+def _check_ctx():
+    by_id = {c[0]: c[1] for c in CASES}
+    for cid, ctx in CTX.items():
+        assert cid in by_id, f"CTX names unknown case {cid!r}"
+        assert by_id[cid][-len(ctx):] == ctx, \
+            f"{cid}: args must END with their declared context {ctx!r} (flags first, context last)"
+_check_ctx()
 
 # Perf sweep: (id, args). Wall median + gpu total are compared to the
 # baseline bench on the same machine, hi-z block second pass.
@@ -232,6 +270,14 @@ PERF_CASES = [
     ("water-sec-scale-4", ["--water-sec-scale", "4"]),
     ("no-light-rgb",      ["--no-light-rgb"]),
     ("no-flat-secondary", ["--no-flat-secondary"]),
+    # shadow reach experiment (was hardcoded 220.0) and the effects-lab
+    # toggles, benched at the vantage the demo builders are built for.
+    ("shadow-dist-128",   ["--shadow-dist", "128"]),
+    ("demo-glass-b",      ["--demo-glass", "--cam-height", "14", "--cam-pitch", "-20"]),
+    ("glass-reflect-b",   ["--demo-glass", "--glass-reflect",
+                           "--cam-height", "14", "--cam-pitch", "-20"]),
+    ("isolate-glass-b",   ["--demo-glass", "--isolate-glass",
+                           "--cam-height", "14", "--cam-pitch", "-20"]),
 ]
 
 # ---------------------------------------------------------------------------
@@ -509,7 +555,9 @@ def main():
     print("baseline benched", flush=True)
 
     # ---------------- flag sweep ----------------
-    sweep = ["case                       expect  result  differ      MAE    max  seconds  bbox"]
+    sweep = ["case                       expect  result  differ      MAE    max  seconds  bbox",
+             "(rows tagged [ctx] are diffed against their paired context baseline, not the default capture)"]
+    ctx_cache = {}
     n = 0
     total = len(CASES)
     t_sweep = time.time()
@@ -525,7 +573,21 @@ def main():
             rep.fails.append(("flag", cid, f"exit {code}: {tail[:160]}"))
             print(f"[{n}/{total}] {cid}: FAIL (exit {code})", flush=True)
             continue
-        d, code, dout, derr = diff_pair(binary, base_png, png, runlog)
+        ref, ref_tag = base_png, ""
+        if cid in CTX:
+            key = tuple(CTX[cid])
+            ref = ctx_cache.get(key)
+            if ref is None:
+                ref = str(runs / f"ctx_{len(ctx_cache)}_{cid}.png")
+                okc, codec, oc, ec, _ = screenshot(binary, base_args, list(key), ref, k, runlog)
+                if not okc:
+                    tail = (ec.splitlines() or oc.splitlines() or ["<no output>"])[-1]
+                    sweep.append(f"{cid:26s} {expect:6s} FAIL    {'-':>6s} {'-':>7s} {'-':>4s} {dtc:7.1f}  ctx exit {codec}")
+                    rep.fails.append(("flag", cid, f"context baseline exit {codec}: {tail[:140]}"))
+                    continue
+                ctx_cache[key] = ref
+            ref_tag = " [ctx]"
+        d, code, dout, derr = diff_pair(binary, ref, png, runlog)
         if d is None:
             sweep.append(f"{cid:26s} {expect:6s} FAIL    {'-':>6s} {'-':>7s} {'-':>4s} {dtc:7.1f}  diff exit {code}")
             rep.fails.append(("flag", cid, f"diff exit {code}"))
@@ -537,7 +599,7 @@ def main():
                               f"restated defaults but {d['differ']} px differ (MAE {d['mae']:.4f})"))
         elif expect == CH and d["differ"] == 0:
             verdict = "SUSPECT"
-            rep.suspects.append(("flag", cid, "arm moved zero pixels vs baseline"))
+            rep.suspects.append(("flag", cid, "arm moved zero pixels vs baseline" + (" (vs paired context)" if ref_tag else "")))
         elif expect == INERT and d["differ"] == 0:
             verdict = "inert-ok"
             rep.inert.append(("flag", cid, INERT_WHY.get(cid, "no trigger in this scene")))
@@ -546,7 +608,7 @@ def main():
             rep.notes.append(f"flag {cid}: expected inert but moved {d['differ']} px -- the trigger exists after all; keep an eye on repeat runs")
         frac = 100.0 * d["differ"] / max(d["total"], 1)
         sweep.append(f"{cid:26s} {expect:6s} {verdict:6s} {d['differ']:6d} {d['mae']:7.4f} {d['max']:4d} "
-                     f"{dtc:7.1f}  {frac:5.1f}% of frame; bbox {d['bbox'][:48]}")
+                     f"{dtc:7.1f}  {frac:5.1f}% of frame; bbox {d['bbox'][:44]}{ref_tag}")
         print(f"[{n}/{total}] {cid}: {verdict} (differ {d['differ']})", flush=True)
     sweep.append(f"sweep wall time: {time.time() - t_sweep:.0f}s for {n} cases")
     rep.add("FLAG SWEEP (baseline vs variant)", sweep)

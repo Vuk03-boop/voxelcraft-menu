@@ -722,6 +722,7 @@ impl App {
                     0
                 },
             ambient: self.cfg.ambient,
+            shadow_dist: self.cfg.shadow_dist,
             fog: self.cfg.fog,
             clouds: self.cfg.clouds,
             sky: self.cfg.sky,

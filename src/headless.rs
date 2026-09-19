@@ -467,6 +467,7 @@ fn shot_frame(
                 0
             },
         ambient: cfg.ambient,
+        shadow_dist: cfg.shadow_dist,
         fog: cfg.fog,
         clouds: cfg.clouds,
         sky: cfg.sky,
@@ -703,7 +704,20 @@ pub(crate) fn bench_frames(cfg: &Config, frames: usize) -> render::anyhow_lite::
     println!("gpu: {}", renderer.gpu.adapter.get_info().name);
     println!("generating world...");
     let journal = journal::open(cfg)?;
-    let (mut world, manager, mut player) = headless_scene(cfg, journal.clone());
+    let (mut world, mut manager, mut player) = headless_scene(cfg, journal.clone());
+    if cfg.demo_edits || cfg.demo_glass || cfg.demo_lamps {
+        let gen = Arc::new(cfg.worldgen());
+        let cam = player.eye();
+        if cfg.demo_lamps {
+            build_lamp_chamber(&mut world, &gen, cam, player.look_dir());
+        } else if cfg.demo_glass {
+            build_glass_structure(&mut world, &gen, cam, player.look_dir());
+        } else {
+            build_demo_structure(&mut world, &gen, cam, player.look_dir());
+        }
+        let n = manager.rebuild_dirty_now(&mut world);
+        println!("  coarse stand-ins rebuilt: {n}");
+    }
     journal::save_if_asked(cfg, &journal, player.state(), player.bar)?;
     let cam = player.eye();
     renderer.sync_world(&mut world, cam);
@@ -757,6 +771,7 @@ pub(crate) fn bench_frames(cfg: &Config, frames: usize) -> render::anyhow_lite::
                         0
                     },
                 ambient: cfg.ambient,
+                shadow_dist: cfg.shadow_dist,
                 fog: cfg.fog,
                 clouds: cfg.clouds,
                 sky: cfg.sky,
