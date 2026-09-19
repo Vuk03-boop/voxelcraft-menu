@@ -632,6 +632,7 @@ pub struct FrameParams {
     pub ambient: f32,
     pub shadow_dist: f32,
     pub world_epoch: u32,
+    pub exp_shadow_repro: bool,
     pub fog: Fog,
 
     pub clouds: Clouds,
@@ -843,6 +844,7 @@ pub struct Renderer {
     pub last_camera_chunk: Option<usize>,
 
     prev_view_proj: Option<Mat4>,
+    shadow_sig: Option<u64>,
 
     frame_index: u64,
 
@@ -1212,6 +1214,7 @@ impl Renderer {
             surface_format,
             grid_min: IVec3::ZERO,
             prev_view_proj: None,
+            shadow_sig: None,
             frame_index: 0,
             history_valid: false,
             last_blit: 0,
@@ -1571,7 +1574,33 @@ impl Renderer {
     fn ensure_shadow_targets(&mut self,size:(u32,u32)) {
         if self.shadow_targets.size!=size {
             self.shadow_targets=shadow::Targets::new(&self.gpu.device,size,&self.split_layout,&self.shadow_layouts);
+            self.shadow_sig = None;
         }
+    }
+
+    // Exp 1 (temporal shadow reprojection, safe-static-first): the blocker,
+    // radius and visibility targets persist between frames, so when EVERY
+    // input to the shadow trio is bit-identical to last frame's, skipping
+    // the dispatch reuses exactly what re-tracing would compute. The
+    // signature therefore FNV-mixes the camera basis, lens, sun, reach, the
+    // full spec pair, the render size and the world epoch -- one bit moves,
+    // the trio runs cold. Moving-camera reprojection (depth-compatible
+    // sampling of a history copy) is the follow-up this signature already
+    // conservatively blocks.
+    fn shadow_signature(&self, p: &FrameParams, spec: (u32, u32), size: (u32, u32)) -> u64 {
+        let mut h = 0xcbf2_9ce4_8422_2325u64;
+        for f in [p.cam_pos, p.cam_fwd, p.cam_right, p.cam_up, p.sun_dir] {
+            for c in [f.x, f.y, f.z] {
+                h = (h ^ u64::from(c.to_bits())).wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        }
+        for b in [p.fov_y.to_bits(), p.far.to_bits(), p.shadow_dist.to_bits()] {
+            h = (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        for v in [p.world_epoch as u64, u64::from(spec.0), u64::from(spec.1), u64::from(size.0), u64::from(size.1)] {
+            h = (h ^ v).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        h
     }
 
     fn ensure_spec(&mut self, spec: (u32, u32)) -> usize {
@@ -1831,6 +1860,9 @@ impl Renderer {
                     timestamp_writes: self.timer.family_timestamp(true),
                 });
             }
+            let shadow_sig = self.shadow_signature(p, spec_key, (w, h));
+            let reuse_shadow = p.exp_shadow_repro && self.shadow_sig == Some(shadow_sig);
+            if !reuse_shadow {
             for stage in 0..3 {
                 let label=["shadow one ray", "shadow bilateral horizontal", "shadow bilateral vertical"][stage];
                 let mut pass=enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -1844,6 +1876,8 @@ impl Renderer {
                     else { &self.spec_pipes[spec_idx].1.shadow_blurs[stage-1] };
                 pass.set_pipeline(pipe);
                 pass.dispatch_workgroups(w.div_ceil(16),h.div_ceil(8),1);
+            }
+            self.shadow_sig = Some(shadow_sig);
             }
             if spec_key.1 & FLAG_HI_WATER_SEC != 0 {
                 let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {

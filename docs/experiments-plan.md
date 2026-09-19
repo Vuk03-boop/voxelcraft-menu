@@ -23,7 +23,7 @@ produces the eyeball PNGs.
 
 | # | Flag | Idea | Prereqs | Class |
 |---|------|------|---------|-------|
-| 1 | `--exp-shadow-repro` | Temporal shadow reprojection | **world epoch on GPU** (see below) + persistent blocker-history texture | EXACT (static camera) |
+| 1 | `--exp-shadow-repro` | Temporal shadow reprojection (safe-static-first) | world epoch on GPU (landed) + signature-gated dispatch skip; moving-camera repro is the follow-up | EXACT |
 | 2 | `--exp-halfres-glass` | Half-resolution glass legs | none (resize machinery exists, mod.rs:1567) | CHANGE + perf arm |
 | 3 | `--exp-biome-bake` | Bake biome tint noise to 128² tex at world load | none (resolve.wgsl has 12 noise sites) | EXACT-at-default-lens approx → CHANGE w/ tight threshold |
 | 4 | `--exp-temporal-hiz` | min-blend last frame's Hi-Z before finalize | world epoch on GPU | EXACT ~ (defer ratio only) |

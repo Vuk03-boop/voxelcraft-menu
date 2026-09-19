@@ -208,3 +208,40 @@ fn world_epoch_reaches_the_gpu_frame() {
         "the shader-side Frame struct must mirror the payload or offsets lie"
     );
 }
+
+#[test]
+fn exp_shadow_repro_skips_only_when_the_signature_matches() {
+    let cfg = source("src/config.rs").expect("the one parser");
+    let r = source("src/render/mod.rs").expect("the dispatch lives here");
+    let a = source("src/app.rs").expect("interactive builder");
+    let h = source("src/headless.rs").expect("headless builders");
+    assert!(
+        cfg.contains("--exp-shadow-repro") && cfg.contains("exp_shadow_repro: bool"),
+        "the experiment must be a real CLI flag with a Config field, default off"
+    );
+    assert!(
+        cfg.contains("exp_shadow_repro: false"),
+        "experiments are off by default -- main behavior and every EXACT pin stay untouched"
+    );
+    assert!(
+        r.contains("pub exp_shadow_repro: bool,"),
+        "FrameParams must carry the experiment through"
+    );
+    assert!(
+        r.contains("let reuse_shadow = p.exp_shadow_repro && self.shadow_sig == Some(shadow_sig);"),
+        "the skip must be AND-gated on the flag -- silent reuse on a bare signature is a cache bug"
+    );
+    assert!(
+        r.contains("fn shadow_signature("),
+        "the signature covers camera+lens+sun+reach+spec+size+epoch so one bit moving re-traces"
+    );
+    assert!(
+        r.contains("self.shadow_sig = Some(shadow_sig);"),
+        "running the trio must seal the next frame\u{2019}s comparison"
+    );
+    assert!(
+        r.contains("self.shadow_sig = None;") && a.contains("exp_shadow_repro: self.cfg.exp_shadow_repro,")
+            && h.matches("exp_shadow_repro: cfg.exp_shadow_repro,").count() == 2,
+        "target recreation forgets the signature; all three builders thread the flag"
+    );
+}

@@ -724,6 +724,7 @@ impl App {
             ambient: self.cfg.ambient,
             shadow_dist: self.cfg.shadow_dist,
             world_epoch: self.world.version as u32,
+            exp_shadow_repro: self.cfg.exp_shadow_repro,
             fog: self.cfg.fog,
             clouds: self.cfg.clouds,
             sky: self.cfg.sky,
