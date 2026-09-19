@@ -1139,6 +1139,7 @@ impl Renderer {
             &shaft_buf,
             &probe_view,
             &probe_sampler,
+            &biome,
         );
         let taa_bind_group = std::array::from_fn(|i| {
             make_bind_group(
@@ -1333,6 +1334,7 @@ impl Renderer {
             &self.shaft_buf,
             &self.probe_view,
             &self.probe_sampler,
+            &self.biome,
         );
 
         self.water_read_group = make_water_sec_group(
@@ -1372,6 +1374,7 @@ impl Renderer {
                 &self.shaft_buf,
                 &self.probe_view,
                 &self.probe_sampler,
+                &self.biome,
             )
         });
         self.bind_dirty = false;
@@ -1661,7 +1664,7 @@ impl Renderer {
         let spec_idx = self.ensure_spec(spec_key);
         if self.last_spec_key != Some(spec_key) {
             self.last_spec_key = Some(spec_key);
-            if p.exp_biome_bake {
+            if spec_key.1 & FLAG_HI_BIOME_BAKE != 0 {
                 self.gpu.queue.write_buffer(&self.biome.buf, 0, &vec![0u8; 128 * 128 * 16]);
             }
         }
