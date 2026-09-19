@@ -172,3 +172,39 @@ fn bench_frames_honors_the_demo_builders() {
         "demo edits must be rebuilt into the coarse stand-ins before the stopwatch starts"
     );
 }
+
+#[test]
+fn world_epoch_reaches_the_gpu_frame() {
+    let r = source("src/render/mod.rs").expect("the frame upload lives here");
+    let a = source("src/app.rs").expect("the interactive path builds FrameParams here");
+    let h = source("src/headless.rs").expect("the harness path builds FrameParams here");
+    let wgsl = source("src/render/shaders/common.wgsl").expect("the shader Frame twin lives here");
+    assert!(
+        r.contains("pub world_epoch: u32,"),
+        "FrameParams must carry the epoch -- experiments that reuse history key off it"
+    );
+    assert!(
+        r.contains("world_epoch: p.world_epoch,"),
+        "the upload site must read the epoch through FrameParams"
+    );
+    assert!(
+        r.contains("offset_of!(GpuFrame, world_epoch) == 352"),
+        "GpuFrame layout pins must track the appended tail field"
+    );
+    assert!(
+        r.contains("size_of::<GpuFrame>() == 368"),
+        "352 + u32 + 12 pad = 368 and 16-aligned -- a shifted matrix is a corrupted frame"
+    );
+    assert!(
+        a.contains("world_epoch: self.world.version as u32,"),
+        "the interactive path feeds it from World.version"
+    );
+    assert!(
+        h.matches("world_epoch: world.version as u32,").count() == 2,
+        "both headless builders (capture + bench) must feed it too"
+    );
+    assert!(
+        wgsl.contains("world_epoch: u32,"),
+        "the shader-side Frame struct must mirror the payload or offsets lie"
+    );
+}

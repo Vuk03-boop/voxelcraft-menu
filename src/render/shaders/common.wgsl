@@ -75,6 +75,10 @@ struct Frame {
     zenith_deep: f32,
 
     prev_view_proj: mat4x4<f32>,
+    world_epoch: u32,
+    epoch_pad0: u32,
+    epoch_pad1: u32,
+    epoch_pad2: u32,
 };
 
 struct Chunk {

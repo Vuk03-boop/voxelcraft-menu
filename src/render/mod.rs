@@ -453,9 +453,11 @@ struct GpuFrame {
     haze_warm: f32,
     zenith_deep: f32,
     prev_view_proj: [[f32; 4]; 4],
+    world_epoch: u32,
+    epoch_pad: [u32; 3],
 }
 
-const _: () = assert!(std::mem::size_of::<GpuFrame>() == 352);
+const _: () = assert!(std::mem::size_of::<GpuFrame>() == 368);
 
 const _: () = assert!(std::mem::offset_of!(GpuFrame, cloud_cover) == 192);
 const _: () = assert!(std::mem::offset_of!(GpuFrame, godray_strength) == 208);
@@ -464,6 +466,7 @@ const _: () = assert!(std::mem::offset_of!(GpuFrame, wave_amp) == 240);
 const _: () = assert!(std::mem::offset_of!(GpuFrame, shaft_origin) == 256);
 const _: () = assert!(std::mem::offset_of!(GpuFrame, cloud_patch) == 272);
 const _: () = assert!(std::mem::offset_of!(GpuFrame, prev_view_proj) == 288);
+const _: () = assert!(std::mem::offset_of!(GpuFrame, world_epoch) == 352);
 
 #[repr(C)]
 #[derive(Clone, Copy, Default, Pod, Zeroable)]
@@ -628,6 +631,7 @@ pub struct FrameParams {
     pub spec_hi: u32,
     pub ambient: f32,
     pub shadow_dist: f32,
+    pub world_epoch: u32,
     pub fog: Fog,
 
     pub clouds: Clouds,
@@ -1702,6 +1706,8 @@ impl Renderer {
             haze_warm: p.sky.haze_warm,
             zenith_deep: p.sky.zenith_deep,
             prev_view_proj: prev_view_proj.to_cols_array_2d(),
+            world_epoch: p.world_epoch,
+            epoch_pad: [0; 3],
         };
         self.gpu
             .queue
