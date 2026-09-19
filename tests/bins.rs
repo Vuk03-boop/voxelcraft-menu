@@ -311,3 +311,39 @@ fn exp_halfres_glass_runs_legs_once_per_quadrant() {
         "one wrapper def + two call sites, no third leg leaking around the cache"
     );
 }
+
+#[test]
+fn exp_biome_bake_refines_in_place_with_identical_math() {
+    let cfg = source("src/config.rs").expect("flags");
+    let r = source("src/render/mod.rs").expect("plumbing");
+    let wgsl = source("src/render/shaders/resolve.wgsl").expect("the shader");
+    assert!(
+        cfg.contains("--exp-biome-bake") && cfg.contains("exp_biome_bake: false"),
+        "exp contract"
+    );
+    assert!(
+        r.contains("BIND_GROUP_0_ENTRIES: usize = 23") && r.contains("storage_entry(22, false),")
+            && r.contains("binding: 22"),
+        "layout + bind group must both gain binding 22 or the entry count pin goes red"
+    );
+    assert!(
+        r.contains("queue.write_buffer(&biome.buf, 0, &vec![0u8; 128 * 128 * 16]);"),
+        "the cache starts zeroed -- DynBuffer::new leaves garbage and the sentinel is zero"
+    );
+    assert!(
+        r.contains("self.last_spec_key = Some(spec_key);"),
+        "spec changes must re-zero the cache: tint params are baked into it"
+    );
+    assert!(
+        wgsl.contains("@group(0) @binding(22) var<storage, read_write> biome_bake: array<vec3<f32>, 16384>;"),
+        "the 16-byte-stride vec3 storage declaration must match 128*128*16 bytes"
+    );
+    assert!(
+        wgsl.matches("biome_tint_use(hit.xz)").count() == 4 && !wgsl.contains("biome_tint(hit.xz)"),
+        "all four albedo call sites go through the gate; none around it"
+    );
+    assert!(
+        wgsl.contains("let v = biome_tint(xz);"),
+        "the cached branch evaluates the IDENTICAL expression -- bit-exactness is the whole point"
+    );
+}

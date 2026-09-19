@@ -25,7 +25,7 @@ produces the eyeball PNGs.
 |---|------|------|---------|-------|
 | 1 | `--exp-shadow-repro` | Temporal shadow reprojection (safe-static-first) | world epoch on GPU (landed) + signature-gated dispatch skip; moving-camera repro is the follow-up | EXACT |
 | 2 | `--exp-halfres-glass` | Half-res glass legs, quadrant sharing (shipped) | halved-grid dispatch, shade_glass cached per 2x2 thread via private vars; per-pixel tail stays per-pixel | CHANGE + perf arm |
-| 3 | `--exp-biome-bake` | Bake biome tint noise to 128² tex at world load | none (resolve.wgsl has 12 noise sites) | EXACT-at-default-lens approx → CHANGE w/ tight threshold |
+| 3 | `--exp-biome-bake` | Lazily-refined biome tint cache (shipped) | 128² vec3 storage cells (256-block period), refined in place with identical f32 math, spec-key zeroing | EXACT |
 | 4 | `--exp-temporal-hiz` | min-blend last frame's Hi-Z before finalize | world epoch on GPU | EXACT ~ (defer ratio only) |
 
 Execution order (readiness x payoff, re-checked as machinery appeared):

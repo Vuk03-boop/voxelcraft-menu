@@ -191,6 +191,13 @@ fn simplex_grad(seed: u32, x_primed: u32, y_primed: u32, xd: f32, yd: f32) -> f3
     return xd * cos(angle) + yd * sin(angle);
 }
 
+// Exp 3: lazily-refined biome tint cache. 128x128 cells, 256-block period,
+// zero-sentinel start; cells refine in place with the IDENTICAL expression the
+// uncached path evaluates, so values (and pixels) are bit-exact. Races between
+// threads write the same value.
+override SPEC_BIOME_BAKE: bool = false;
+@group(0) @binding(22) var<storage, read_write> biome_bake: array<vec3<f32>, 16384>;
+
 fn biome_fast_floor(f: f32) -> i32 {
     if f >= 0.0 {
         return i32(f);
@@ -284,6 +291,21 @@ fn biome_tint(world_xz: vec2<f32>) -> vec3<f32> {
     return wh.x * dry + wh.y * mid + wh.z * wet;
 }
 
+fn biome_tint_cached(xz: vec2<f32>) -> vec3<f32> {
+    let q = vec2<i32>(floor(xz * (1.0f / 256.0))) & vec2<i32>(127);
+    let idx = u32(q.y) * 128u + u32(q.x);
+    let hit = biome_bake[idx];
+    if !all(hit == vec3<f32>(0.0)) { return hit; }
+    let v = biome_tint(xz);
+    biome_bake[idx] = v;
+    return v;
+}
+
+fn biome_tint_use(xz: vec2<f32>) -> vec3<f32> {
+    if SPEC_BIOME_BAKE { return biome_tint_cached(xz); }
+    return biome_tint(xz);
+}
+
 const SKY_SPEC_GAIN: f32 = 0.5;
 
 fn shade_hit_legacy(ci: u32, v: vec3<u32>, id: u32, normal_id: u32, hit: vec3<f32>, rd: vec3<f32>, dist: f32,
@@ -339,7 +361,7 @@ fn shade_hit_legacy(ci: u32, v: vec3<u32>, id: u32, normal_id: u32, hit: vec3<f3
         if SPEC_TINT && (frame.flags & FLAG_TINT) != 0u && tint_mask > 0.0 {
 
             let k = tint_mask * frame.tint_strength;
-            albedo = albedo * mix(vec3<f32>(1.0), biome_tint(hit.xz), k);
+            albedo = albedo * mix(vec3<f32>(1.0), biome_tint_use(hit.xz), k);
         }
 
         if SPEC_SHORE_WET && id == SAND_ID {
@@ -820,7 +842,7 @@ fn shade_hit_compact(ci: u32, v: vec3<u32>, id: u32, normal_id: u32, hit: vec3<f
         let tint_mask = select(texel.a, 1.0, foliage);
         if SPEC_TINT && (frame.flags & FLAG_TINT) != 0u && tint_mask > 0.0 {
             let k = tint_mask * frame.tint_strength;
-            albedo = albedo * mix(vec3<f32>(1.0), biome_tint(hit.xz), k);
+            albedo = albedo * mix(vec3<f32>(1.0), biome_tint_use(hit.xz), k);
         }
         if SPEC_SHORE_WET && id == SAND_ID {
             let wet = 1.0 - smoothstep(frame.sea_level, frame.sea_level + WET_BAND, hit.y);
@@ -1605,7 +1627,7 @@ fn shade_hit_legacy_cached(ci: u32, v: vec3<u32>, id: u32, normal_id: u32, hit: 
         let tint_mask = select(texel.a, 1.0, foliage);
         if SPEC_TINT && (frame.flags & FLAG_TINT) != 0u && tint_mask > 0.0 {
             let k = tint_mask * frame.tint_strength;
-            albedo = albedo * mix(vec3<f32>(1.0), biome_tint(hit.xz), k);
+            albedo = albedo * mix(vec3<f32>(1.0), biome_tint_use(hit.xz), k);
         }
         if SPEC_SHORE_WET && id == SAND_ID {
             let wet = 1.0 - smoothstep(frame.sea_level, frame.sea_level + WET_BAND, hit.y);
@@ -2049,7 +2071,7 @@ fn shade_hit_compact_cached(ci: u32, v: vec3<u32>, id: u32, normal_id: u32, hit:
         let tint_mask = select(texel.a, 1.0, foliage);
         if SPEC_TINT && (frame.flags & FLAG_TINT) != 0u && tint_mask > 0.0 {
             let k = tint_mask * frame.tint_strength;
-            albedo = albedo * mix(vec3<f32>(1.0), biome_tint(hit.xz), k);
+            albedo = albedo * mix(vec3<f32>(1.0), biome_tint_use(hit.xz), k);
         }
         if SPEC_SHORE_WET && id == SAND_ID {
             let wet = 1.0 - smoothstep(frame.sea_level, frame.sea_level + WET_BAND, hit.y);

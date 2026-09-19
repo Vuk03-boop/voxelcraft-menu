@@ -342,6 +342,7 @@ pub(crate) fn spec_hi_from(cfg: &Config) -> u32 {
     let mut f = 0u32;
     if cfg.isolate_glass { f |= render::FLAG_HI_ISOLATE_GLASS; }
     if cfg.exp_halfres_glass { f |= render::FLAG_HI_GLASS_QUAD; }
+    if cfg.exp_biome_bake { f |= render::FLAG_HI_BIOME_BAKE; }
     f |= render::FLAG_HI_SHADOW_PASS;
     if cfg.legacy_lighting { f |= render::FLAG_HI_LEGACY_LIGHTING; }
     if cfg.legacy_water { f |= render::FLAG_HI_LEGACY_WATER; }

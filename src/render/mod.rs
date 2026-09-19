@@ -247,6 +247,7 @@ pub const FLAG_HI_DEBUG_C: u32 = 33554432;
 pub const FLAG_HI_SUN_NARROW: u32 = 67108864;
 pub const FLAG_HI_SUN_WIDE: u32 = 134217728;
 pub const FLAG_HI_GLASS_QUAD: u32 = 536870912;
+pub const FLAG_HI_BIOME_BAKE: u32 = 1073741824;
 
 pub const FLAG_PROBE_TAP: u32 = 16777216;
 
@@ -298,7 +299,8 @@ pub const SPEC_HI_MASK: u32 = FLAG_HI_SKY_SPECULAR
     | FLAG_HI_DEBUG_C
     | FLAG_HI_SUN_NARROW
     | FLAG_HI_SUN_WIDE
-    | FLAG_HI_GLASS_QUAD;
+    | FLAG_HI_GLASS_QUAD
+    | FLAG_HI_BIOME_BAKE;
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_SKY_SPECULAR != 0);
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_FULL_MARCH != 0);
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_EMITTER_WORLD != 0);
@@ -782,6 +784,7 @@ pub struct Renderer {
     indirect: wgpu::Buffer,
     vis: DynBuffer,
     hiz: DynBuffer,
+    biome: DynBuffer,
     dbg: DynBuffer,
 
     shaft_buf: wgpu::Buffer,
@@ -849,6 +852,7 @@ pub struct Renderer {
     prev_view_proj: Option<Mat4>,
     shadow_sig: Option<u64>,
     hiz_sig: Option<u64>,
+    last_spec_key: Option<(u32, u32)>,
 
     frame_index: u64,
 
@@ -1039,6 +1043,17 @@ impl Renderer {
             U::STORAGE,
         );
 
+        // Exp 3: persistent lane for the lazily-refined biome tint cache
+        // (128x128 vec3 cells, 256-block period; resolve.wgsl refines cells
+        // in place with identical f32 math, so output stays bit-exact).
+        let biome = DynBuffer::new(
+            device,
+            "biome tint bake",
+            128 * 128 * 16,
+            U::STORAGE,
+        );
+        queue.write_buffer(&biome.buf, 0, &vec![0u8; 128 * 128 * 16]);
+
         let dbg = DynBuffer::new(
             device,
             "debug",
@@ -1147,6 +1162,7 @@ impl Renderer {
                 &shaft_buf,
                 &probe_view,
                 &probe_sampler,
+                &biome,
             )
         });
         let blit = blit::BlitPass::new(
@@ -1185,6 +1201,7 @@ impl Renderer {
             indirect,
             vis,
             hiz,
+            biome,
             dbg,
             shaft_buf,
             shaft_pipes,
@@ -1220,6 +1237,7 @@ impl Renderer {
             prev_view_proj: None,
             shadow_sig: None,
             hiz_sig: None,
+            last_spec_key: None,
             frame_index: 0,
             history_valid: false,
             last_blit: 0,
@@ -1638,6 +1656,12 @@ impl Renderer {
 
         let spec_key = (p.flags & SPEC_MASK, (p.spec_hi | FLAG_HI_SHADOW_PASS) & SPEC_HI_MASK);
         let spec_idx = self.ensure_spec(spec_key);
+        if self.last_spec_key != Some(spec_key) {
+            self.last_spec_key = Some(spec_key);
+            if p.exp_biome_bake {
+                self.gpu.queue.write_buffer(&self.biome.buf, 0, &vec![0u8; 128 * 128 * 16]);
+            }
+        }
         self.ensure_shadow_targets((w,h));
 
         let sibling = (spec_key.0, spec_key.1 ^ FLAG_HI_EMITTER_WORLD);
@@ -2645,6 +2669,15 @@ fn make_spec(
         ),
 
         (
+            "SPEC_BIOME_BAKE",
+            if spec_hi & FLAG_HI_BIOME_BAKE != 0 {
+                1.0
+            } else {
+                0.0
+            },
+        ),
+
+        (
             "SPEC_SNELL_BEND",
             if spec_hi & FLAG_HI_SNELL_BEND != 0 {
                 1.0
@@ -2756,7 +2789,7 @@ fn make_spec(
     }
 }
 
-pub const BIND_GROUP_0_ENTRIES: usize = 22;
+pub const BIND_GROUP_0_ENTRIES: usize = 23;
 
 fn make_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     let entries: [wgpu::BindGroupLayoutEntry; BIND_GROUP_0_ENTRIES] = [
@@ -2780,6 +2813,7 @@ fn make_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             storage_entry(8, false),
             storage_entry(9, false),
             storage_entry(10, false),
+            storage_entry(22, false),
             wgpu::BindGroupLayoutEntry {
                 binding: 11,
                 visibility: wgpu::ShaderStages::COMPUTE,
@@ -2916,6 +2950,7 @@ fn make_bind_group(
     shaft: &wgpu::Buffer,
     probe: &wgpu::TextureView,
     probe_samp: &wgpu::Sampler,
+    biome: &DynBuffer,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("voxel bg"),
@@ -3008,6 +3043,10 @@ fn make_bind_group(
             wgpu::BindGroupEntry {
                 binding: 21,
                 resource: wgpu::BindingResource::Sampler(probe_samp),
+            },
+            wgpu::BindGroupEntry {
+                binding: 22,
+                resource: biome.buf.as_entire_binding(),
             },
         ],
     })
