@@ -44,10 +44,6 @@ impl Img {
         let y = y.min(self.h - 1) as usize;
         self.px[(y * self.w as usize + x) * 4 + c]
     }
-
-    pub fn same_size(&self, other: &Img) -> bool {
-        self.w == other.w && self.h == other.h
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -220,21 +216,6 @@ pub fn rg_speckle(a: &Img, r: Rect) -> f64 {
     sum / r.pixels().max(1) as f64
 }
 
-#[allow(clippy::needless_range_loop)]
-pub fn mean_rgb(a: &Img, r: Rect) -> [f64; 3] {
-    let r = r.clamped(a);
-    let n = r.pixels().max(1) as f64;
-    let mut s = [0.0f64; 3];
-    for y in r.y0..r.y1 {
-        for x in r.x0..r.x1 {
-            for c in 0..3 {
-                s[c] += a.get(x, y, c) as f64;
-            }
-        }
-    }
-    [s[0] / n, s[1] / n, s[2] / n]
-}
-
 pub const COH_HIGHPASS: u32 = 3;
 
 pub const COH_TILE: u32 = 64;
@@ -285,11 +266,6 @@ pub fn coherence_with(a: &Img, r: Rect, p: CohParams) -> Coherence {
         tiles: n,
     }
 }
-
-pub fn coherence_tiles(a: &Img, r: Rect) -> Vec<(f64, (i32, i32))> {
-    coherence_tiles_with(a, r, COH_PARAMS)
-}
-
 pub fn coherence_tiles_with(a: &Img, r: Rect, p: CohParams) -> Vec<(f64, (i32, i32))> {
     let s = scale(a);
     let lo = lag_px(p.lag_min, s);
@@ -341,23 +317,6 @@ fn summarise_tiles(tiles: &[(f64, (i32, i32))]) -> f64 {
     }
     tiles.iter().map(|t| t.0).sum::<f64>() / tiles.len() as f64
 }
-
-pub fn coherence_grid(a: &Img, r: Rect, max: i32) -> Vec<f64> {
-    let field = Field::new(a, highpass_win(scale(a)));
-    let rect = r.clamped(a);
-    let mut out = Vec::with_capacity(((2 * max + 1) * (max + 1)) as usize);
-    for dy in 0..=max {
-        for dx in -max..=max {
-            out.push(if dy == 0 && dx == 0 {
-                1.0
-            } else {
-                field.rho(rect, dx, dy)
-            });
-        }
-    }
-    out
-}
-
 fn scale(a: &Img) -> f64 {
     a.h as f64 / super::vantage::STD_HEIGHT as f64
 }
@@ -365,11 +324,6 @@ fn scale(a: &Img) -> f64 {
 fn lag_px(v: u32, s: f64) -> i32 {
     ((v as f64 * s).round() as i32).max(1)
 }
-
-fn highpass_win(s: f64) -> u32 {
-    odd_win(COH_HIGHPASS, s)
-}
-
 fn odd_win(v: u32, s: f64) -> u32 {
     ((v as f64 * s).round() as u32).max(3) | 1
 }
@@ -567,9 +521,4 @@ pub fn sha256_hex(data: &[u8]) -> String {
     }
 
     h.iter().map(|v| format!("{v:08x}")).collect()
-}
-
-pub fn sha256_file(path: &Path) -> Result<String, String> {
-    let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok(sha256_hex(&bytes))
 }

@@ -171,11 +171,6 @@ impl<T: RunElem> RunPool<T> {
         self.refs[o] += 1;
         self.referenced_elems += self.lens[o] as u64;
     }
-
-    pub fn ref_count(&self, off: u32) -> u32 {
-        self.refs[off as usize]
-    }
-
     pub fn release(&mut self, off: u32) -> bool {
         let o = off as usize;
         let len = self.lens[o] as usize;

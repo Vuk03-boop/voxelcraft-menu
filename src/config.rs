@@ -728,7 +728,9 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
                 println!("Surface repair: --legacy-lighting / --repaired-lighting; --legacy-water / --repaired-water.\n--sun-softness narrow|normal|wide; --soft-shadow-hq / --no-soft-shadow-hq (requires soft shadows).\n--surface-debug off|normals|shadow|direct|indirect|water-faces|reflection|refraction");
                 println!("Primary shadows always use one ray + optional screen-space reconstruction; --shadow-pass is default, --no-shadow-pass is retired.\nSecondary water/glass shading remains isolated (--isolate-glass, --no-isolate-glass compatibility); timings include the full resolve family.");
                 println!("Experimental: --compact-shade-hit / --no-compact-shade-hit (unmeasured schedule A/B).\n\
-                     Existing arms also accept --no-soft-shadows, --no-wind-sway, --no-water-look, --no-glass-reflect.");
+                     Existing arms also accept --no-soft-shadows, --no-wind-sway, --no-water-look, --no-glass-reflect.\n\
+                     Experiment lane (default off, contract in docs/experiments-plan.md):\n\
+                     --exp-shadow-repro / --exp-temporal-hiz / --exp-halfres-glass / --exp-biome-bake / --exp-glass-ssr");
                 println!(
                     "voxelcraft\n\
                      \n\

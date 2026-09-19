@@ -156,11 +156,6 @@ impl Player {
     pub fn in_water(&self, world: &World) -> bool {
         world.get_block(block_of(self.pos + Vec3::new(0.0, HEIGHT * 0.5, 0.0))) == WATER
     }
-
-    pub fn eye_in_water(&self, world: &World) -> bool {
-        world.get_block(block_of(self.eye())) == WATER
-    }
-
     pub fn update(&mut self, dt: f32, input: &Input, world: &World, physics: bool) {
         self.yaw += input.mouse_dx * self.sensitivity;
         self.pitch = (self.pitch - input.mouse_dy * self.sensitivity).clamp(-1.55, 1.55);

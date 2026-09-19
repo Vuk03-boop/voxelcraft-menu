@@ -154,13 +154,3 @@ pub fn decode_leaf(words: &[u32], entry: u32, voxel_bit: u32) -> BlockId {
     let pw = words[base + 1 + idx / 2];
     (pw >> ((idx & 1) * 16)) as BlockId
 }
-
-pub fn block_words(words: &[u32], entry: u32) -> usize {
-    if entry & UNIFORM_BIT != 0 {
-        return 0;
-    }
-    let hdr = words[entry as usize];
-    let n = (hdr & 0xFF) as usize;
-    let bits = ((hdr >> 8) & 0xFF) as usize;
-    1 + n.div_ceil(2) + (64 * bits) / 32
-}

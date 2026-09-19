@@ -74,16 +74,6 @@ impl Stats {
     pub fn frame_ms(&self) -> f32 {
         mean(&self.frames)
     }
-
-    pub fn frame_ms_p99(&self) -> f32 {
-        let mut v: Vec<f32> = self.frames.iter().copied().collect();
-        if v.is_empty() {
-            return 0.0;
-        }
-        v.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        v[((v.len() as f32 * 0.99) as usize).min(v.len() - 1)]
-    }
-
     pub fn cpu_ms(&self) -> f32 {
         mean(&self.cpu_frames)
     }

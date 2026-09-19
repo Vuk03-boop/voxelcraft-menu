@@ -1347,11 +1347,6 @@ fn transmittance_from(y0: f32, s: f32, rd: vec3<f32>) -> f32 {
     let rho = frame.fog_density * exp(-clamp(lambda * (y0 - frame.fog_height), -60.0, 60.0));
     return exp(-clamp(rho * path, 0.0, 60.0));
 }
-
-fn transmittance(s: f32, rd: vec3<f32>) -> f32 {
-    return transmittance_from(frame.cam_pos.y, s, rd);
-}
-
 const SCATTER_TINT: vec3<f32> = vec3<f32>(1.0000, 0.4770, 0.1474);
 
 const SKY_NIGHT_HORIZON: vec3<f32> = vec3<f32>(0.0049, 0.0060, 0.0134);
