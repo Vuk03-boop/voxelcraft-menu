@@ -105,8 +105,8 @@ fn the_voxel_field_is_never_unpacked_with_a_byte_mask() {
 
     assert_eq!(
         src.matches("(low >> 22u) & 3u").count(),
-        3,
-        "all three decoders read the micro coordinate"
+        4,
+        "all four decoders read the micro coordinate (resolve, taa, the water_sec donor, the ssr vis probe)"
     );
 }
 

@@ -113,9 +113,10 @@ issues; all are fixed in this tree:
   (`--demo-glass` vantage, shared with the no-glass row) where the panes sit
   in front of terrain.
 - **tests/cutout.rs (FAIL)**: the SSR step legitimately decodes the
-  visibility payload for shading — a fourth `(low >> 16u) & VOXEL_MASK` site.
-  The pinned count rose to 4 with the new site named in the message; the
-  audit (every site must mask with VOXEL_MASK, never 0xFF) still passes.
+  visibility payload for shading — a fourth `(low >> 16u) & VOXEL_MASK` site
+  and a fourth `(low >> 22u) & 3u` micro decode. Both pinned counts rose to 4
+  with the new site named in the messages; the audits (every site must mask
+  with VOXEL_MASK, never 0xFF) still pass.
 
 Also fixed along the way: `upload_report.py` mixed a `Path` with a string on
 the default log path (`TypeError` when no `--out` was given), and exp 3's
