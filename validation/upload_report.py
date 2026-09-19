@@ -244,6 +244,13 @@ CTX = {
                              "--cam-pitch", "-25"],
     "glass-reflect":        ["--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143",
                              "--cam-pitch", "-25"],
+    # exp arms: compare inside the glass-house context so CHANGE evidence is
+    # measured with panes over terrain (the default vantage holds sky beyond
+    # the panes and can honestly differ by zero pixels).
+    "exp-halfres-glass":    ["--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143",
+                             "--cam-pitch", "-25"],
+    "exp-glass-ssr":        ["--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143",
+                             "--cam-pitch", "-25"],
     "sun-softness-narrow":  ["--soft-shadows"],
     "sun-softness-wide":    ["--soft-shadows"],
     "no-water-far":         ["--cam-height", "60", "--cam-yaw", "120", "--cam-pitch", "-6"],
@@ -451,7 +458,7 @@ def main():
     runs = ROOT / args.runs_dir
     runs.mkdir(exist_ok=True)
     rep = Report()
-    runlog = open(ROOT / args.out + ".log", "w")   # full command trace
+    runlog = open(str(ROOT / args.out) + ".log", "w")   # full command trace
 
     W, H = k.width, k.height
     base_args = ["--seed", "1337", "--width", str(W), "--height", str(H),

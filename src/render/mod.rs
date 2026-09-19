@@ -1617,15 +1617,22 @@ impl Renderer {
     // the trio runs cold. Moving-camera reprojection (depth-compatible
     // sampling of a history copy) is the follow-up this signature already
     // conservatively blocks.
-    fn steady_signature(&self, p: &FrameParams, spec: (u32, u32), size: (u32, u32)) -> u64 {
+    fn steady_signature(&self, p: &FrameParams, spec: (u32, u32), size: (u32, u32), jitter: Vec2) -> u64 {
         let mut h = 0xcbf2_9ce4_8422_2325u64;
         for f in [p.cam_pos, p.cam_fwd, p.cam_right, p.cam_up, p.sun_dir] {
             for c in [f.x, f.y, f.z] {
                 h = (h ^ u64::from(c.to_bits())).wrapping_mul(0x0000_0100_0000_01b3);
             }
         }
-        for b in [p.fov_y.to_bits(), p.far.to_bits(), p.shadow_dist.to_bits()] {
+        for b in [p.fov_y.to_bits(), p.far.to_bits(), p.shadow_dist.to_bits(), p.time.to_bits()] {
             h = (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        // The EFFECTIVE jitter (p.jitter if pinned, else the per-frame Halton
+        // offset) is hashed here by the caller: screenshots converge frames
+        // with a changing jitter, and replaying targets traced with a previous
+        // frame's rays is not bit-equal.
+        for c in [jitter.x, jitter.y] {
+            h = (h ^ u64::from(c.to_bits())).wrapping_mul(0x0000_0100_0000_01b3);
         }
         for v in [p.world_epoch as u64, u64::from(spec.0), u64::from(spec.1), u64::from(size.0), u64::from(size.1)] {
             h = (h ^ v).wrapping_mul(0x0000_0100_0000_01b3);
@@ -1830,7 +1837,7 @@ impl Renderer {
             pass.dispatch_workgroups_indirect(&self.indirect, 0);
         }
         if hiz_on {
-            let hiz_sig = self.steady_signature(p, spec_key, (w, h));
+            let hiz_sig = self.steady_signature(p, spec_key, (w, h), jitter);
             let reuse_hiz = p.exp_temporal_hiz && self.hiz_sig == Some(hiz_sig);
             if !reuse_hiz {
             {
@@ -1901,7 +1908,7 @@ impl Renderer {
                     timestamp_writes: self.timer.family_timestamp(true),
                 });
             }
-            let shadow_sig = self.steady_signature(p, spec_key, (w, h));
+            let shadow_sig = self.steady_signature(p, spec_key, (w, h), jitter);
             let reuse_shadow = p.exp_shadow_repro && self.shadow_sig == Some(shadow_sig);
             if !reuse_shadow {
             for stage in 0..3 {

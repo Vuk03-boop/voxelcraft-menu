@@ -87,7 +87,9 @@ fn hit_t_does_not_branch_on_the_cutout_override() {
 fn the_voxel_field_is_never_unpacked_with_a_byte_mask() {
     let src = render::shader_source();
     let sites: Vec<_> = src.match_indices("(low >> 16u)").collect();
-    assert_eq!(sites.len(), 3, "resolve and taa and the water_sec donor");
+    // exp-glass-ssr adds a fourth compliant site: the SSR step decodes the
+    // visibility payload the same VOXEL_MASK way to shade its sample.
+    assert_eq!(sites.len(), 4, "resolve and taa and the water_sec donor and the ssr vis probe");
     for (at, _) in sites {
         let line_end = src[at..].find('\n').map(|e| at + e).unwrap_or(src.len());
         let line = &src[at..line_end];

@@ -294,8 +294,18 @@ fn biome_tint(world_xz: vec2<f32>) -> vec3<f32> {
 fn biome_tint_cached(xz: vec2<f32>) -> vec3<f32> {
     let q = vec2<i32>(floor(xz * (1.0f / 256.0))) & vec2<i32>(127);
     let idx = u32(q.y) * 128u + u32(q.x);
-    let hit = biome_bake[idx];
-    if !all(hit == vec3<f32>(0.0)) { return hit; }
+    // RMW on plain (non-atomic) vec3 storage can tear mid-write. Accept a
+    // cached entry only after two consecutive identical, non-zero reads;
+    // otherwise fall through and compute the value ourselves.
+    var v1 = biome_bake[idx];
+    for (var k = 0u; k < 4u; k = k + 1u) {
+        let v2 = biome_bake[idx];
+        if all(v1 == v2) {
+            if !all(v1 == vec3<f32>(0.0)) { return v1; }
+            break;
+        }
+        v1 = v2;
+    }
     let v = biome_tint(xz);
     biome_bake[idx] = v;
     return v;

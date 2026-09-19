@@ -88,3 +88,35 @@ One full `python validation/upload_report.py` (no `--fast`) at the user's
 single-slot cadence: all six `--exp-*` rows measured, all baseline EXACT
 rows still 0 px, plus lookbook + ctx PNGs for the eyeball pass on any
 CHANGE-class arm (glass especially).
+
+## Validation round 2 — what the first user-side sweep caught
+
+The first full `upload_report.py` run after exp 1/4/3 landed found four
+issues; all are fixed in this tree:
+
+- **exp-shadow-repro / exp-temporal-hiz (FAIL)**: the steady-state signature
+  lacked the TAA jitter and `time`, so a screenshot re-tracing every frame
+  (its own halton-jittered, time-advancing rays) was replayed from the
+  previous frame's targets. Time and both jitter components now hash into
+  the signature; any animated parameter invalidates reuse and the arms are
+  EXACT again (the bench loop keeps its steady skip because time is frozen
+  there).
+- **exp-biome-bake (FAIL)**: the bake table is plain storage; a triple being
+  written by one invocation can tear while another reads it, and a torn mix
+  can clear the "non-zero means ready" sentinel. The cache now returns a
+  value only after two consecutive identical non-zero reads, else it computes
+  the tint on the spot (same value, no tearing on the critical path).
+- **exp-halfres-glass / exp-glass-ssr (SUSPECT, zero pixels moved)**: the
+  CHANGE-class evidence was measured at the default vantage, where every
+  glass pane faces parked sky and the changes honestly move nothing below
+  the differ threshold. Both rows now compare inside the glass-house context
+  (`--demo-glass` vantage, shared with the no-glass row) where the panes sit
+  in front of terrain.
+- **tests/cutout.rs (FAIL)**: the SSR step legitimately decodes the
+  visibility payload for shading — a fourth `(low >> 16u) & VOXEL_MASK` site.
+  The pinned count rose to 4 with the new site named in the message; the
+  audit (every site must mask with VOXEL_MASK, never 0xFF) still passes.
+
+Also fixed along the way: `upload_report.py` mixed a `Path` with a string on
+the default log path (`TypeError` when no `--out` was given), and exp 3's
+plumbing had bind-group call sites missing the bake buffer.
