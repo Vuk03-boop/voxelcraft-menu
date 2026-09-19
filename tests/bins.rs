@@ -275,3 +275,39 @@ fn exp_temporal_hiz_reuses_under_the_same_steadiness_contract() {
         "the signature was renamed: it describes frame steadiness, used by shadow AND hiz reuse"
     );
 }
+
+#[test]
+fn exp_halfres_glass_runs_legs_once_per_quadrant() {
+    let r = source("src/render/mod.rs").expect("dispatch + wiring");
+    let wgsl = source("src/render/shaders/resolve.wgsl").expect("the lane shader");
+    let common = source("src/render/shaders/common.wgsl").expect("overrides");
+    let cfg = source("src/config.rs").expect("flags");
+    assert!(
+        cfg.contains("--exp-halfres-glass") && cfg.contains("exp_halfres_glass: false"),
+        "exp contract: real flag, default off"
+    );
+    assert!(
+        common.contains("override SPEC_GLASS_QUAD: bool = false;"),
+        "the override the wiring pair feeds"
+    );
+    assert!(
+        r.contains("FLAG_HI_GLASS_QUAD: u32 = 536870912;"),
+        "next free spec_hi bit after SUN_WIDE (1<<28; LIGHT_RGB\u{2019}s 268435456 is the BASE mask)"
+    );
+    assert!(
+        r.contains("\"SPEC_GLASS_QUAD\","),
+        "the constants pair must wire it (spec_hi guard agreement)"
+    );
+    assert!(
+        r.contains("label == \"glass resolve\" && spec_key.1 & FLAG_HI_GLASS_QUAD != 0"),
+        "only the glass lane dispatches the halved grid"
+    );
+    assert!(
+        wgsl.contains("fn resolve_pixel") && wgsl.contains("if SPEC_GLASS_QUAD && RESOLVE_LANE == 1u"),
+        "quadrant wrapper around the parametrized pixel body, lane-1-only and spec-gated"
+    );
+    assert!(
+        wgsl.matches("shade_glass_shared").count() == 3,
+        "one wrapper def + two call sites, no third leg leaking around the cache"
+    );
+}

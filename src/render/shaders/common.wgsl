@@ -239,6 +239,7 @@ override WATER_SEC_SHIFT: u32 = 1u;
 override SPEC_CAUSTICS: bool = false;
 
 override SPEC_GLASS_REFLECT: bool = false;
+override SPEC_GLASS_QUAD: bool = false;
 
 override SPEC_SNELL_BEND: bool = false;
 

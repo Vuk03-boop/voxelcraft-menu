@@ -246,6 +246,7 @@ pub const FLAG_HI_DEBUG_B: u32 = 16777216;
 pub const FLAG_HI_DEBUG_C: u32 = 33554432;
 pub const FLAG_HI_SUN_NARROW: u32 = 67108864;
 pub const FLAG_HI_SUN_WIDE: u32 = 134217728;
+pub const FLAG_HI_GLASS_QUAD: u32 = 536870912;
 
 pub const FLAG_PROBE_TAP: u32 = 16777216;
 
@@ -296,7 +297,8 @@ pub const SPEC_HI_MASK: u32 = FLAG_HI_SKY_SPECULAR
     | FLAG_HI_DEBUG_B
     | FLAG_HI_DEBUG_C
     | FLAG_HI_SUN_NARROW
-    | FLAG_HI_SUN_WIDE;
+    | FLAG_HI_SUN_WIDE
+    | FLAG_HI_GLASS_QUAD;
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_SKY_SPECULAR != 0);
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_FULL_MARCH != 0);
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_EMITTER_WORLD != 0);
@@ -1923,7 +1925,14 @@ impl Renderer {
                     pass.set_bind_group(2, &self.water_empty_group, &[]);
                     pass.set_bind_group(3, &self.shadow_targets.read_group, &[]);
                     pass.set_pipeline(pipe);
-                    pass.dispatch_workgroups(w.div_ceil(16), h.div_ceil(8), 1);
+                    // Exp 2: the glass lane on a halved grid -- each thread shades a
+                    // 2x2 quadrant and runs the pair of glass legs once.
+                    let (gw, gh) = if label == "glass resolve" && spec_key.1 & FLAG_HI_GLASS_QUAD != 0 {
+                        (w.div_ceil(2), h.div_ceil(2))
+                    } else {
+                        (w, h)
+                    };
+                    pass.dispatch_workgroups(gw.div_ceil(16), gh.div_ceil(8), 1);
                 }
             }
 
@@ -2620,6 +2629,15 @@ fn make_spec(
         (
             "SPEC_GLASS_REFLECT",
             if spec_hi & FLAG_HI_GLASS_REFLECT != 0 {
+                1.0
+            } else {
+                0.0
+            },
+        ),
+
+        (
+            "SPEC_GLASS_QUAD",
+            if spec_hi & FLAG_HI_GLASS_QUAD != 0 {
                 1.0
             } else {
                 0.0

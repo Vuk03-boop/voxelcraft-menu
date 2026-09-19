@@ -1318,6 +1318,21 @@ fn shade_glass(ci: u32, v: vec3<u32>, normal_id: u32, hit: vec3<f32>, rd: vec3<f
     return mix(through * tint, refl, schlick_glass(max(-dot(rd, n), 1e-3)));
 }
 
+// Exp 2 (half-res glass legs): quadrant threads share one shade_glass. The two
+// trace_world legs are the cost the bench prices (glass-reflect-b +41% wall);
+// across a 2x2 tile those radiance fields are smooth, so legs run once per
+// quadrant while the per-pixel tail (shaft, transmittance, water path) keeps
+// its own inputs -- flat leg radiance, crisp silhouettes.
+var<private> quad_glass: vec3<f32>;
+var<private> quad_glass_ok: bool = false;
+fn shade_glass_shared(ci: u32, v: vec3<u32>, normal_id: u32, hit: vec3<f32>, rd: vec3<f32>, t: f32) -> vec3<f32> {
+    if !quad_glass_ok {
+        quad_glass = shade_glass(ci, v, normal_id, hit, rd, t);
+        quad_glass_ok = true;
+    }
+    return quad_glass;
+}
+
 fn underwater_body() -> vec3<f32> {
     return WATER_BODY * medium_light(world_sample(frame.cam_pos).x);
 }
@@ -1378,8 +1393,19 @@ fn surface_from_below(above: vec3<f32>, rd: vec3<f32>, dist: f32) -> vec3<f32> {
 @compute @workgroup_size(16, 8, 1)
 fn resolve(
 @builtin(global_invocation_id) gid: vec3<u32>) {
-    let px = gid.x;
-    let py = gid.y;
+    if SPEC_GLASS_QUAD && RESOLVE_LANE == 1u {
+        let bx = gid.x * 2u;
+        let by = gid.y * 2u;
+        resolve_pixel(bx, by);
+        resolve_pixel(bx + 1u, by);
+        resolve_pixel(bx, by + 1u);
+        resolve_pixel(bx + 1u, by + 1u);
+        return;
+    }
+    resolve_pixel(gid.x, gid.y);
+}
+
+fn resolve_pixel(px: u32, py: u32) {
     if px >= frame.res.x || py >= frame.res.y {
         return;
     }
@@ -1426,7 +1452,7 @@ fn resolve(
         dist = t;
 
         if RESOLVE_LANE == 1u {
-            color=shade_glass(ci,v,normal_id,hit,rd,t);
+            color=shade_glass_shared(ci,v,normal_id,hit,rd,t);
         } else if RESOLVE_LANE == 2u {
             if SPEC_WATER_SEC { color=shade_water_sec(ci,v,normal_id,hit,rd,t,px,py); }
             else { color=shade_water(ci,v,normal_id,hit,rd,t); }
@@ -1439,7 +1465,7 @@ fn resolve(
                 }
             } else if SPEC_GLASS && id == GLASS_ID {
                 if RESOLVE_LANE == 0u { return; }
-                else { color=shade_glass(ci,v,normal_id,hit,rd,t); }
+                else { color=shade_glass_shared(ci,v,normal_id,hit,rd,t); }
             } else {
                 color=shade_hit_cached(ci,v,id,normal_id,hit,rd,t,pix);
             }
