@@ -27,6 +27,16 @@ produces the eyeball PNGs.
 | 2 | `--exp-halfres-glass` | Half-resolution glass legs | none (resize machinery exists, mod.rs:1567) | CHANGE + perf arm |
 | 3 | `--exp-biome-bake` | Bake biome tint noise to 128² tex at world load | none (resolve.wgsl has 12 noise sites) | EXACT-at-default-lens approx → CHANGE w/ tight threshold |
 | 4 | `--exp-temporal-hiz` | min-blend last frame's Hi-Z before finalize | world epoch on GPU | EXACT ~ (defer ratio only) |
+
+Execution order (readiness x payoff, re-checked as machinery appeared):
+**shipped** = 0) world epoch on GPU `731cec6`, 1) `--exp-shadow-repro` `7cc068d`,
+then 4) `--exp-temporal-hiz` was pulled ahead of 2/3 because it rides the SAME
+signature machinery rendered-only (renamed `shadow_signature` ->
+`steady_signature` to reflect the shared use). Both skips are
+safe-static-first: exact by construction on steady frames, deliberately inert
+while the camera or the world moves. Remaining: 2) half-res glass, 3) biome
+bake, 5) glass SSR, 6) octree skip -- the plumbing-heavy four each get a
+focused sitting.
 | 5 | `--exp-glass-ssr` | Screen-space marching for glass legs, sky fallback | visibility always-on (today: isolate-lane only, mod.rs:1021) | CHANGE + perf arm (the +41% row) |
 | 6 | `--exp-octree-skip` | Subtree-level skip in DDA | dda.rs pins exist | EXACT |
 

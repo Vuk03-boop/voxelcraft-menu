@@ -633,6 +633,7 @@ pub struct FrameParams {
     pub shadow_dist: f32,
     pub world_epoch: u32,
     pub exp_shadow_repro: bool,
+    pub exp_temporal_hiz: bool,
     pub fog: Fog,
 
     pub clouds: Clouds,
@@ -845,6 +846,7 @@ pub struct Renderer {
 
     prev_view_proj: Option<Mat4>,
     shadow_sig: Option<u64>,
+    hiz_sig: Option<u64>,
 
     frame_index: u64,
 
@@ -1215,6 +1217,7 @@ impl Renderer {
             grid_min: IVec3::ZERO,
             prev_view_proj: None,
             shadow_sig: None,
+            hiz_sig: None,
             frame_index: 0,
             history_valid: false,
             last_blit: 0,
@@ -1575,6 +1578,7 @@ impl Renderer {
         if self.shadow_targets.size!=size {
             self.shadow_targets=shadow::Targets::new(&self.gpu.device,size,&self.split_layout,&self.shadow_layouts);
             self.shadow_sig = None;
+            self.hiz_sig = None;
         }
     }
 
@@ -1587,7 +1591,7 @@ impl Renderer {
     // the trio runs cold. Moving-camera reprojection (depth-compatible
     // sampling of a history copy) is the follow-up this signature already
     // conservatively blocks.
-    fn shadow_signature(&self, p: &FrameParams, spec: (u32, u32), size: (u32, u32)) -> u64 {
+    fn steady_signature(&self, p: &FrameParams, spec: (u32, u32), size: (u32, u32)) -> u64 {
         let mut h = 0xcbf2_9ce4_8422_2325u64;
         for f in [p.cam_pos, p.cam_fwd, p.cam_right, p.cam_up, p.sun_dir] {
             for c in [f.x, f.y, f.z] {
@@ -1794,6 +1798,9 @@ impl Renderer {
             pass.dispatch_workgroups_indirect(&self.indirect, 0);
         }
         if hiz_on {
+            let hiz_sig = self.steady_signature(p, spec_key, (w, h));
+            let reuse_hiz = p.exp_temporal_hiz && self.hiz_sig == Some(hiz_sig);
+            if !reuse_hiz {
             {
                 let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("hi-z"),
@@ -1804,6 +1811,8 @@ impl Renderer {
                 pass.dispatch_workgroups(self.tiles.0, self.tiles.1, 1);
                 pass.set_pipeline(&self.pipes.finalize_deferred);
                 pass.dispatch_workgroups(1, 1, 1);
+            }
+            self.hiz_sig = Some(hiz_sig);
             }
             enc.copy_buffer_to_buffer(&self.indirect_storage, 0, &self.indirect, 0, 32);
             {
@@ -1860,7 +1869,7 @@ impl Renderer {
                     timestamp_writes: self.timer.family_timestamp(true),
                 });
             }
-            let shadow_sig = self.shadow_signature(p, spec_key, (w, h));
+            let shadow_sig = self.steady_signature(p, spec_key, (w, h));
             let reuse_shadow = p.exp_shadow_repro && self.shadow_sig == Some(shadow_sig);
             if !reuse_shadow {
             for stage in 0..3 {

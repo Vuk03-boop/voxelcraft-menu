@@ -61,6 +61,7 @@ pub struct Config {
     pub isolate_glass: bool,
 
     pub exp_shadow_repro: bool,
+    pub exp_temporal_hiz: bool,
     pub shadow_pass: bool,
     pub legacy_lighting: bool,
     pub legacy_water: bool,
@@ -307,6 +308,7 @@ impl Default for Config {
             compact_shade_hit: false,
             isolate_glass: false,
             exp_shadow_repro: false,
+            exp_temporal_hiz: false,
             shadow_pass: true,
             legacy_lighting: false, legacy_water: false, soft_shadow_hq: false,
             surface_debug: 0, sun_softness: 0, shadow_dist: 220.0,
@@ -537,6 +539,7 @@ pub fn parse_from(args: &[String]) -> (Config, Mode, Vec<String>) {
             "--no-glass-reflect" => cfg.glass_reflect = false,
             "--isolate-glass" => cfg.isolate_glass = true,
             "--exp-shadow-repro" => cfg.exp_shadow_repro = true,
+            "--exp-temporal-hiz" => cfg.exp_temporal_hiz = true,
             "--no-isolate-glass" => cfg.isolate_glass = false,
             "--legacy-lighting" => cfg.legacy_lighting = true,
             "--repaired-lighting" => cfg.legacy_lighting = false,

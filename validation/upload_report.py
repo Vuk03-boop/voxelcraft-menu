@@ -79,6 +79,7 @@ CASES = [
     ("no-glass-reflect",         ["--no-glass-reflect"],                                      UN),
     ("no-isolate-glass",         ["--no-isolate-glass"],                                      UN),
     ("exp-shadow-repro",        ["--exp-shadow-repro"],                                      UN),
+    ("exp-temporal-hiz",        ["--exp-temporal-hiz"],                                      UN),
 
     ("no-compact-shade-hit",     ["--no-compact-shade-hit"],                                  UN),
     ("compact-shade-hit",        ["--compact-shade-hit"],                                     UN),
@@ -279,6 +280,7 @@ PERF_CASES = [
     ("glass-reflect-b",   ["--demo-glass", "--glass-reflect",
                            "--cam-height", "14", "--cam-pitch", "-20"]),
     ("exp-shadow-repro-b", ["--exp-shadow-repro"]),
+    ("exp-temporal-hiz-b", ["--exp-temporal-hiz"]),
     ("isolate-glass-b",   ["--demo-glass", "--isolate-glass",
                            "--cam-height", "14", "--cam-pitch", "-20"]),
 ]

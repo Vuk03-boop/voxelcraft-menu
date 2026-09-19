@@ -232,7 +232,7 @@ fn exp_shadow_repro_skips_only_when_the_signature_matches() {
         "the skip must be AND-gated on the flag -- silent reuse on a bare signature is a cache bug"
     );
     assert!(
-        r.contains("fn shadow_signature("),
+        r.contains("fn steady_signature("),
         "the signature covers camera+lens+sun+reach+spec+size+epoch so one bit moving re-traces"
     );
     assert!(
@@ -243,5 +243,35 @@ fn exp_shadow_repro_skips_only_when_the_signature_matches() {
         r.contains("self.shadow_sig = None;") && a.contains("exp_shadow_repro: self.cfg.exp_shadow_repro,")
             && h.matches("exp_shadow_repro: cfg.exp_shadow_repro,").count() == 2,
         "target recreation forgets the signature; all three builders thread the flag"
+    );
+}
+
+#[test]
+fn exp_temporal_hiz_reuses_under_the_same_steadiness_contract() {
+    let cfg = source("src/config.rs").expect("the one parser");
+    let r = source("src/render/mod.rs").expect("the dispatch lives here");
+    assert!(
+        cfg.contains("--exp-temporal-hiz") && cfg.contains("exp_temporal_hiz: false"),
+        "exp flag with the default-off contract"
+    );
+    assert!(
+        r.contains("pub exp_temporal_hiz: bool,"),
+        "FrameParams must carry it"
+    );
+    assert!(
+        r.contains("let reuse_hiz = p.exp_temporal_hiz && self.hiz_sig == Some(hiz_sig);"),
+        "the skip must be AND-gated on the flag and sealed by the signature"
+    );
+    assert!(
+        r.contains("self.hiz_sig = Some(hiz_sig);"),
+        "running the build seals the next frame\u{2019}s comparison"
+    );
+    assert!(
+        r.contains("self.hiz_sig = None;"),
+        "size-change recreates must forget the signature -- tiles derive from the surface size"
+    );
+    assert!(
+        r.contains("fn shadow_signature") == false,
+        "the signature was renamed: it describes frame steadiness, used by shadow AND hiz reuse"
     );
 }
