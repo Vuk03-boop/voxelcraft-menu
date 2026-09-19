@@ -248,6 +248,8 @@ pub const FLAG_HI_SUN_NARROW: u32 = 67108864;
 pub const FLAG_HI_SUN_WIDE: u32 = 134217728;
 pub const FLAG_HI_GLASS_QUAD: u32 = 536870912;
 pub const FLAG_HI_BIOME_BAKE: u32 = 1073741824;
+// spec_hi bits: 1<<31 is the last flag day in this mask row
+pub const FLAG_HI_GLASS_SSR: u32 = 2147483648;
 
 pub const FLAG_PROBE_TAP: u32 = 16777216;
 
@@ -300,7 +302,8 @@ pub const SPEC_HI_MASK: u32 = FLAG_HI_SKY_SPECULAR
     | FLAG_HI_SUN_NARROW
     | FLAG_HI_SUN_WIDE
     | FLAG_HI_GLASS_QUAD
-    | FLAG_HI_BIOME_BAKE;
+    | FLAG_HI_BIOME_BAKE
+    | FLAG_HI_GLASS_SSR;
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_SKY_SPECULAR != 0);
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_FULL_MARCH != 0);
 const _: () = assert!(SPEC_HI_MASK & FLAG_HI_EMITTER_WORLD != 0);
@@ -2671,6 +2674,15 @@ fn make_spec(
         (
             "SPEC_BIOME_BAKE",
             if spec_hi & FLAG_HI_BIOME_BAKE != 0 {
+                1.0
+            } else {
+                0.0
+            },
+        ),
+
+        (
+            "SPEC_GLASS_SSR",
+            if spec_hi & FLAG_HI_GLASS_SSR != 0 {
                 1.0
             } else {
                 0.0

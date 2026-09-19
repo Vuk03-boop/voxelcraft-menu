@@ -347,3 +347,34 @@ fn exp_biome_bake_refines_in_place_with_identical_math() {
         "the cached branch evaluates the IDENTICAL expression -- bit-exactness is the whole point"
     );
 }
+
+#[test]
+fn exp_glass_ssr_marches_visibility_not_world() {
+    let c = source("src/config.rs").expect("flags");
+    let w = source("src/render/shaders/resolve.wgsl").expect("the lane shader");
+    let r = source("src/render/mod.rs").expect("wiring");
+    assert!(
+        c.contains("--exp-glass-ssr") && c.contains("exp_glass_ssr: false"),
+        "exp contract"
+    );
+    assert!(
+        w.contains("struct SsrHit") && w.contains("for (var i = 0u; i < SSR_STEPS"),
+        "the marcher exists, bounded by the step budget"
+    );
+    assert!(
+        w.contains("atomicLoad(&vis[spy * frame.res.x + spx])"),
+        "the march samples the visibility buffer -- the whole point of screen-space"
+    );
+    assert!(
+        w.matches("ssr_trace(").count() == 3,
+        "definition + transmit leg + reflect leg; no more legs may exist"
+    );
+    assert!(
+        w.contains("trace_world(ro2, rdir") && w.contains("trace_world(origin,mirror,"),
+        "the DDA legs stay as the else-branch fallback -- off, compare against"
+    );
+    assert!(
+        r.contains("\"SPEC_GLASS_SSR\","),
+        "the constants pair must wire it (wiring-guard agreement)"
+    );
+}

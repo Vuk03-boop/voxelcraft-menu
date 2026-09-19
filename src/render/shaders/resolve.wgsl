@@ -1280,6 +1280,74 @@ fn shade_water_sec(ci: u32, v: vec3<u32>, normal_id: u32, hit: vec3<f32>, rd: ve
     return water_compose(ctx, leg_r, leg_m);
 }
 
+// Exp 5 (glass SSR): screen-space substitute for the glass trace_world
+// legs. The primary visibility buffer already carries (ci, v, micro, normal)
+// per pixel; marching the reflect/transmit rays against it keeps the glass
+// legs O(steps) instead of a whole-scene DDA per leg. Off-screen rays, misses
+// and > SSR_MAX_DIST falls back to the exact sky fallback shade the DDA path
+// used. CHANGE class: leg radiance legitimately differs from the full march.
+override SPEC_GLASS_SSR: bool = false;
+const SSR_STEPS: u32 = 24u;
+const SSR_MAX_DIST: f32 = 192.0;
+
+struct SsrHit {
+    ok: bool,
+    ci: u32,
+    v: vec3<u32>,
+    normal: u32,
+    t: f32,
+};
+
+fn ssr_seed(hit: vec3<f32>) -> u32 {
+    return u32(abs(hit.x * 57.0 + hit.z * 127.0 + hit.y * 31.0)) + 61u;
+}
+
+fn ssr_project(w: vec3<f32>) -> vec3<f32> { // (px, py, view_z)
+    let d = w - frame.cam_pos;
+    let z = dot(d, frame.cam_fwd);
+    let x = dot(d, frame.cam_right);
+    let y = dot(d, frame.cam_up);
+    let ndc_x = x / max(z * frame.tan_half_fov * frame.aspect, 1e-4);
+    let ndc_y = y / max(z * frame.tan_half_fov, 1e-4);
+    return vec3<f32>((ndc_x * 0.5 + 0.5) * f32(frame.res.x), (0.5 - ndc_y * 0.5) * f32(frame.res.y), z);
+}
+
+fn ssr_trace(origin: vec3<f32>, rdir: vec3<f32>, seed: u32) -> SsrHit {
+    var none: SsrHit;
+    let j = f32(hash_u32(seed) & 0xFFFFu) * (1.0f / 65536.0);
+    let px_scale = max(frame.tan_half_fov * 2.0 / f32(frame.res.y), 1e-4);
+    var reach = 0.75 + j * 0.5;
+    for (var i = 0u; i < SSR_STEPS; i = i + 1u) {
+        if reach > SSR_MAX_DIST { break; }
+        let w = origin + rdir * reach;
+        let pr = ssr_project(w);
+        if pr.z <= 0.0 || pr.x < 0.0 || pr.y < 0.0 || pr.x >= f32(frame.res.x) || pr.y >= f32(frame.res.y) { break; }
+        let spx = u32(pr.x);
+        let spy = u32(pr.y);
+        let key = atomicLoad(&vis[spy * frame.res.x + spx]);
+        if key != 0lu {
+            let ci = u32(key >> 24u) & 0x1FFFu;
+            let low = u32(key & 0xFFFFFFlu);
+            let v = vec3<u32>((low >> 16u) & VOXEL_MASK,(low >> 8u) & VOXEL_MASK, low & VOXEL_MASK);
+            let micro = vec3<u32>((low >> 22u) & 3u, (low >> 14u) & 3u, (low >> 6u) & 3u);
+            let nid = u32(key >> 37u) & 7u;
+            let rd_s = ray_dir(f32(spx) + 0.5, f32(spy) + 0.5);
+            let ts = hit_t(ci, v, micro, nid, rd_s);
+            if abs(ts - reach) <= max(0.5, reach * 0.02) {
+                var out: SsrHit;
+                out.ok = true;
+                out.ci = ci;
+                out.v = v;
+                out.normal = nid;
+                out.t = reach;
+                return out;
+            }
+        }
+        reach = reach * 1.12 + max(pr.z * px_scale * 0.5, 0.25);
+    }
+    return none;
+}
+
 fn shade_glass(ci: u32, v: vec3<u32>, normal_id: u32, hit: vec3<f32>, rd: vec3<f32>, t: f32) -> vec3<f32> {
     let c = chunks[ci];
     let vs = c.voxel_size;
@@ -1299,22 +1367,33 @@ fn shade_glass(ci: u32, v: vec3<u32>, normal_id: u32, hit: vec3<f32>, rd: vec3<f
     let rdir = rd;
     let ro2 = hit + rdir * SURFACE_EPS;
 
-    let h2 = trace_world(ro2, rdir, max(GLASS_TRANSMIT_DIST,frame.far), false);
-
     var through = sky_color(ro2, rdir, t, 1.0);
-    if h2.hit {
-        let p2 = ro2 + rdir * h2.t;
-        let id2 = block_at(h2.ci, h2.voxel);
-
-        if id2 == WATER_ID {
-
-            through = shade_water(h2.ci, h2.voxel, h2.normal, p2, rdir, t + h2.t);
-        } else {
-            through = shade_hit(h2.ci, h2.voxel, id2, h2.normal, p2, rdir,
-                                t + h2.t, GLASS_SHADOW_DIST, secondary_smooth(), false);
+    if SPEC_GLASS_SSR {
+        let ssr_t = ssr_trace(ro2, rdir, ssr_seed(hit));
+        if ssr_t.ok {
+            let p2 = ro2 + rdir * ssr_t.t;
+            let id2 = block_at(ssr_t.ci, ssr_t.v);
+            if id2 == WATER_ID {
+                through = shade_water(ssr_t.ci, ssr_t.v, ssr_t.normal, p2, rdir, t + ssr_t.t);
+            } else {
+                through = shade_hit(ssr_t.ci, ssr_t.v, id2, ssr_t.normal, p2, rdir,
+                                    t + ssr_t.t, GLASS_SHADOW_DIST, secondary_smooth(), false);
+            }
+            through = mix(through, sky_base(rdir, 1.0), 1.0 - transmittance_from(hit.y, ssr_t.t, rdir));
         }
-
-        through = mix(through, sky_base(rdir, 1.0), 1.0 - transmittance_from(hit.y, h2.t, rdir));
+    } else {
+        let h2 = trace_world(ro2, rdir, max(GLASS_TRANSMIT_DIST,frame.far), false);
+        if h2.hit {
+            let p2 = ro2 + rdir * h2.t;
+            let id2 = block_at(h2.ci, h2.voxel);
+            if id2 == WATER_ID {
+                through = shade_water(h2.ci, h2.voxel, h2.normal, p2, rdir, t + h2.t);
+            } else {
+                through = shade_hit(h2.ci, h2.voxel, id2, h2.normal, p2, rdir,
+                                    t + h2.t, GLASS_SHADOW_DIST, secondary_smooth(), false);
+            }
+            through = mix(through, sky_base(rdir, 1.0), 1.0 - transmittance_from(hit.y, h2.t, rdir));
+        }
     }
 
     let mirror = reflect(rd, n);
@@ -1322,18 +1401,32 @@ fn shade_glass(ci: u32, v: vec3<u32>, normal_id: u32, hit: vec3<f32>, rd: vec3<f
 
     if SPEC_GLASS_REFLECT {
         let origin=hit+n*SURFACE_EPS;
-
-        let reflected=trace_world(origin,mirror,max(GLASS_TRANSMIT_DIST,frame.far),false);
-        if reflected.hit {
-            let point=origin+mirror*reflected.t;
-            let material=block_at(reflected.ci,reflected.voxel);
-            if material==WATER_ID {
-                refl=shade_water(reflected.ci,reflected.voxel,reflected.normal,point,mirror,t+reflected.t);
-            } else {
-                refl=shade_hit(reflected.ci,reflected.voxel,material,reflected.normal,point,mirror,
-                    t+reflected.t,GLASS_SHADOW_DIST,secondary_smooth(),false);
+        if SPEC_GLASS_SSR {
+            let ssr_r = ssr_trace(origin, mirror, ssr_seed(hit) ^ 57u);
+            if ssr_r.ok {
+                let point=origin+mirror*ssr_r.t;
+                let material=block_at(ssr_r.ci,ssr_r.v);
+                if material==WATER_ID {
+                    refl=shade_water(ssr_r.ci,ssr_r.v,ssr_r.normal,point,mirror,t+ssr_r.t);
+                } else {
+                    refl=shade_hit(ssr_r.ci,ssr_r.v,material,ssr_r.normal,point,mirror,
+                        t+ssr_r.t,GLASS_SHADOW_DIST,secondary_smooth(),false);
+                }
+                refl=mix(refl,sky_base(mirror,1.0),1.0-transmittance_from(hit.y,ssr_r.t,mirror));
             }
-            refl=mix(refl,sky_base(mirror,1.0),1.0-transmittance_from(hit.y,reflected.t,mirror));
+        } else {
+            let reflected=trace_world(origin,mirror,max(GLASS_TRANSMIT_DIST,frame.far),false);
+            if reflected.hit {
+                let point=origin+mirror*reflected.t;
+                let material=block_at(reflected.ci,reflected.voxel);
+                if material==WATER_ID {
+                    refl=shade_water(reflected.ci,reflected.voxel,reflected.normal,point,mirror,t+reflected.t);
+                } else {
+                    refl=shade_hit(reflected.ci,reflected.voxel,material,reflected.normal,point,mirror,
+                        t+reflected.t,GLASS_SHADOW_DIST,secondary_smooth(),false);
+                }
+                refl=mix(refl,sky_base(mirror,1.0),1.0-transmittance_from(hit.y,reflected.t,mirror));
+            }
         }
     }
 

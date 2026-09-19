@@ -37,7 +37,7 @@ safe-static-first: exact by construction on steady frames, deliberately inert
 while the camera or the world moves. Remaining: 2) half-res glass, 3) biome
 bake, 5) glass SSR, 6) octree skip -- the plumbing-heavy four each get a
 focused sitting.
-| 5 | `--exp-glass-ssr` | Screen-space marching for glass legs, sky fallback | visibility always-on (today: isolate-lane only, mod.rs:1021) | CHANGE + perf arm (the +41% row) |
+| 5 | `--exp-glass-ssr` | Screen-space marching for glass legs, sky fallback (shipped) | vis buffer is always-on at resolve; 24-step jittered march, 1.12 geometric growth, DDA kept as fallback branch | CHANGE + perf arm |
 | 6 | `--exp-octree-skip` | Subtree-level skip in DDA | dda.rs pins exist | EXACT |
 
 ## The shared hook: world epoch on GPU
