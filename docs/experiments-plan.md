@@ -38,7 +38,31 @@ while the camera or the world moves. Remaining: 2) half-res glass, 3) biome
 bake, 5) glass SSR, 6) octree skip -- the plumbing-heavy four each get a
 focused sitting.
 | 5 | `--exp-glass-ssr` | Screen-space marching for glass legs, sky fallback (shipped) | vis buffer is always-on at resolve; 24-step jittered march, 1.12 geometric growth, DDA kept as fallback branch | CHANGE + perf arm |
-| 6 | `--exp-octree-skip` | Subtree-level skip in DDA | dda.rs pins exist | EXACT |
+| 6 | *octree-level skip* | Subtree-level run skipping in the DDA | **deferred with reasons (see below)** | EXACT |
+
+## Exp 6 deferred: why the marcher did not get touched blind
+
+The plan's honest read of `trace_world` + `march_chunk`: the DDA ALREADY
+implements most of what the roadmap asked for -- absent L1 lines skip at 16
+blocks, their pair-runs at 32 (`rlo & 0x00330033u` position-rotation test),
+absent 4³ leaf quadrants at 4, and voxel spans at 1-2. The residual win
+(runs of 4+ empty L1 nodes, "hierarchical cone skip to next set bit")
+requires extending the rotated-mask encoding whose bit-pair selection
+(`sh = l1b & 42u`) is position-dependent magic that the current pins do not
+cover: dda.rs freezes reciprocal guards, pos_dir provenance, and raw-ray
+position/normal math -- precisely the invariants that stay true for a WRONG
+run-skip. The EXACT suite would catch visual drift, but only after the user
+got a build back in exchange for the most delicate function in the renderer.
+The lane's discipline (pin before promise) says no.
+
+The day this goes in, the honest path is: (1) write the run-skip as a Rust
+emulation in a dda.rs test against the existing synthetic chunk fixtures,
+asserting bit-identical HITS on the corpus, not just inspectable strings;
+(2) only then the wgsl mirror; (3) MAX_ITERS headroom monitored via the
+existing iteration heatmap (dbg) before/after. Instrumentation for its value
+already exists: the per-pixel iteration heatmap and the no-full-march perf
+arm tell you exactly where the 15->8 step theorem would pay.
+
 
 ## The shared hook: world epoch on GPU
 
