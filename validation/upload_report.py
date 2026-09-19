@@ -80,8 +80,8 @@ CASES = [
     ("no-isolate-glass",         ["--no-isolate-glass"],                                      UN),
     ("exp-shadow-repro",        ["--exp-shadow-repro"],                                      UN),
     ("exp-temporal-hiz",        ["--exp-temporal-hiz"],                                      UN),
-    ("exp-halfres-glass",       ["--exp-halfres-glass"],                                     CH),
-    ("exp-glass-ssr",           ["--exp-glass-ssr"],                                          CH),
+    ("exp-halfres-glass",       ["--exp-halfres-glass", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
+    ("exp-glass-ssr",           ["--exp-glass-ssr", "--demo-glass", "--cam-submerge", "1", "--cam-yaw", "143", "--cam-pitch", "-25"],  CH),
     ("exp-biome-bake",          ["--exp-biome-bake"],                                         UN),
 
     ("no-compact-shade-hit",     ["--no-compact-shade-hit"],                                  UN),
