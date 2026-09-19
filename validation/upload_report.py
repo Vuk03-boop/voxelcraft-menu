@@ -458,7 +458,7 @@ def main():
     runs = ROOT / args.runs_dir
     runs.mkdir(exist_ok=True)
     rep = Report()
-    runlog = open(str(ROOT / args.out) + ".log", "w")   # full command trace
+    runlog = open(ROOT / (args.out + ".log"), "w")   # full command trace
 
     W, H = k.width, k.height
     base_args = ["--seed", "1337", "--width", str(W), "--height", str(H),
