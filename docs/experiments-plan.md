@@ -120,3 +120,35 @@ issues; all are fixed in this tree:
 Also fixed along the way: `upload_report.py` mixed a `Path` with a string on
 the default log path (`TypeError` when no `--out` was given), and exp 3's
 plumbing had bind-group call sites missing the bake buffer.
+
+## User-side round-2 sweep (7934229, before the round-2 fixes landed)
+
+Full 139-case sweep + perf + functional, Windows, RTX 3050 Laptop, 42 minutes,
+ran against `7934229` — i.e. the tree *before* `184fb65`. It is kept as the
+before-picture; every red row maps to a round-2 fix already on the branch:
+
+| sweep verdict (7934229) | disposition in `184fb65` |
+| --- | --- |
+| FAIL exp-shadow-repro, 67098 px | signature now hashes effective jitter + `time`; expected EXACT |
+| FAIL exp-temporal-hiz, 58 px | same signature fix; expected EXACT |
+| FAIL exp-biome-bake, 271113 px | torn-read retry in the bake cache; expected EXACT |
+| SUSPECT exp-halfres-glass, 0 px | row moved into the glass-house ctx; expected CHANGE evidence |
+| SUSPECT exp-glass-ssr, 0 px | row moved into the glass-house ctx; expected CHANGE evidence |
+| functional FAIL: cutout pin (4 vs 3 sites) | pin count 4 with the SSR site named; restored green |
+
+Classical rows: 100% green (all EXACT rows 0 px, all CHANGE rows explainable,
+three EXPECTED-INERT confirmed inert, 4 may-be-inert notes identical to the
+pre-lane runs — no regressions outside the five experiment rows).
+
+Perf readings (order-noise band ±17% from the in-run drift check):
+`exp-shadow-repro-b` +14%, `exp-temporal-hiz-b` +20% — both inside or at the
+noise band, the honest parking spot for EXACT-class arms whose win only
+appears on lighter scenes; `exp-biome-bake-b` +18%, same. `exp-halfres-glass-b`
+and `exp-glass-ssr-b` each +23% wall — above noise, which is expected: these
+CHANGE-class arms pay the quadrant/SSR tracing on the glass-house bench
+vantage (the plain `--demo-glass` vantage itself is +43% over the default
+bench vantage, so a large share of the delta is vantage cost, not the arm).
+
+Re-verification of the five rows does NOT need the full sweep; the subset run
+is `python validation/upload_report.py --cases exp- --skip-lookbook --skip-perf`
+(flag sweep only, ~10 minutes), plus `cargo test --release` for the pin.
